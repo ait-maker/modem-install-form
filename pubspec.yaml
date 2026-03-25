@@ -1,0 +1,38 @@
+name: modem_manager
+description: 한국지역난방공사 무선모뎀 신규설치 접수 및 관리 시스템
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  provider: 6.1.5+1
+
+  # Local Storage
+  shared_preferences: 2.5.3
+
+  # Date/Time
+  intl: 0.20.2
+
+  # UI Components
+  google_fonts: 6.2.1
+
+  # Icons
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
