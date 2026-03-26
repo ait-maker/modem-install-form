@@ -192,7 +192,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           _periodLabel(),
           const SizedBox(height: 12),
 
-          // KPI 카드 2x3
+          // KPI 카드 (5개: 전체접수/설치완료/설치보류/접수취소/평균완료일)
           _buildKpiGrid(total, completed, active, onHold, cancelled, rate, avgDays),
           const SizedBox(height: 20),
 
@@ -223,14 +223,14 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     );
   }
 
+  // active 파라미터는 하위 호환성 유지용 (KPI에서는 미사용)
   Widget _buildKpiGrid(int total, int completed, int active,
       int onHold, int cancelled, double rate, double? avgDays) {
     final items = [
       _KpiData('전체 접수',   '$total건',              Icons.list_alt_rounded,             AppTheme.secondary),
       _KpiData('설치 완료',   '$completed건',          Icons.check_circle_rounded,         AppTheme.primary),
-      _KpiData('진행 중',    '$active건',              Icons.pending_actions_rounded,       AppTheme.warning),
       _KpiData('설치 보류',  '$onHold건',              Icons.pause_circle_outline_rounded,  const Color(0xFFEA580C)),
-      _KpiData('취소',       '$cancelled건',          Icons.cancel_rounded,               AppTheme.cancelled),
+      _KpiData('접수취소',   '$cancelled건',          Icons.cancel_rounded,               AppTheme.cancelled),
       _KpiData('평균 완료일', avgDays != null ? '${avgDays.toStringAsFixed(1)}일' : '-', Icons.timer_outlined, const Color(0xFF7C3AED)),
     ];
 
@@ -499,7 +499,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                               const SizedBox(width: 4),
                               _SmallBadge('완료 $completed', AppTheme.primary),
                               const SizedBox(width: 4),
-                              if (active > 0) _SmallBadge('진행 $active', AppTheme.warning),
+                              if (active > 0) _SmallBadge('미완료 $active', AppTheme.warning),
                               if (active > 0) const SizedBox(width: 4),
                               if (onHold > 0) _SmallBadge('보류 $onHold', const Color(0xFFEA580C)),
                             ],
@@ -517,7 +517,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   children: [
                     _LegendDot(AppTheme.primary, '완료'),
                     const SizedBox(width: 12),
-                    _LegendDot(AppTheme.warning, '진행중'),
+                    _LegendDot(AppTheme.warning, '미완료'),
                     const SizedBox(width: 12),
                     _LegendDot(const Color(0xFFEA580C), '보류'),
                   ],
@@ -674,7 +674,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   children: [
                     _LegendDot(AppTheme.primary, '완료'),
                     const SizedBox(width: 12),
-                    _LegendDot(AppTheme.warning, '진행중'),
+                    _LegendDot(AppTheme.warning, '미완료'),
                     const SizedBox(width: 12),
                     _LegendDot(const Color(0xFFEA580C), '보류'),
                   ],
@@ -702,7 +702,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 // 헤더
                 TableRow(
                   decoration: BoxDecoration(color: AppTheme.background, borderRadius: BorderRadius.circular(6)),
-                  children: ['월', '접수', '완료', '진행', '보류', '완료율'].map((h) =>
+                  children: ['월', '접수', '완료', '미완료', '보류', '완료율'].map((h) =>
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
                       child: Text(h,

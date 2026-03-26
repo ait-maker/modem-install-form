@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "381201607861",
+    "project_id": "modem-install-2026",
+    "storage_bucket": "modem-install-2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:381201607861:android:3c9c720cc8c21ed58862fc",
+        "android_client_info": {
+          "package_name": "com.modemmanager.install"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQWDW0ufEqA1iOrh8i7n2b9vUIDymkBTU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

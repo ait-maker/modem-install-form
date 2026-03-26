@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 enum InstallationStatus {
   pending,    // 접수대기
   confirmed,  // 접수확인
@@ -15,7 +17,7 @@ extension InstallationStatusExt on InstallationStatus {
       case InstallationStatus.scheduled: return '설치예정';
       case InstallationStatus.onHold:    return '설치보류';
       case InstallationStatus.completed: return '설치완료';
-      case InstallationStatus.cancelled: return '취소';
+      case InstallationStatus.cancelled: return '접수취소';
     }
   }
 
@@ -39,6 +41,32 @@ const List<String> holdReasonList = [
   '건물 준공 전',
   '고객 거부',
 ];
+
+// ── 상태 변경 이력 항목 ──────────────────────────────────────────────────────
+class StatusHistoryEntry {
+  final InstallationStatus status;
+  final DateTime changedAt;
+  final String? note; // 완료메모 또는 보류사유
+
+  const StatusHistoryEntry({
+    required this.status,
+    required this.changedAt,
+    this.note,
+  });
+
+  Map<String, dynamic> toMap() => {
+    'status': status.value,
+    'changedAt': changedAt.toIso8601String(),
+    'note': note ?? '',
+  };
+
+  factory StatusHistoryEntry.fromMap(Map<String, dynamic> m) =>
+      StatusHistoryEntry(
+        status: InstallationStatusExt.fromString(m['status'] as String?),
+        changedAt: DateTime.tryParse(m['changedAt'] as String? ?? '') ?? DateTime.now(),
+        note: (m['note'] as String?)?.isNotEmpty == true ? m['note'] as String : null,
+      );
+}
 
 /// 슬레이브 열량계 (번호 + 포트)
 class SlaveMeter {
@@ -69,11 +97,11 @@ class InstallationRequest {
   final String machineRoomNumber;
 
   // 열량계 - 마스터
-  final String masterMeterNumber;   // 마스터 열량계 번호
-  final String masterPort;          // 마스터 포트 번호
+  final String masterMeterNumber;
+  final String masterPort;
 
   // 연결방식
-  final String connectionType;      // '1:1 연결' | '1:N 연결'
+  final String connectionType;
 
   // 슬레이브 (1:N 시 최대 3개)
   final List<SlaveMeter> slaveMeters;
@@ -84,11 +112,22 @@ class InstallationRequest {
   final String buildingManagerPhone;
   final String? notes;
 
+  // ── 상태 및 날짜 이력 (Firebase 연동 후 소요일 통계에 활용) ──────────────
   final InstallationStatus status;
-  final String? holdReason;         // 설치보류 사유
-  final DateTime createdAt;
-  final DateTime? completedAt;
+  final String? holdReason;
+
+  final DateTime createdAt;           // 접수일 (자동)
+  final DateTime? confirmedAt;        // 접수확인일 (자동)
+  final DateTime? scheduledAt;        // 설치예정 처리일 (자동)
+  final DateTime? onHoldAt;           // 보류 처리일 (자동)
+  final DateTime? completedAt;        // 설치완료일 (자동)
+  final DateTime? cancelledAt;        // 취소일 (자동)
+  final DateTime? lastStatusChangedAt;// 최종 상태변경일 (자동)
+
   final String? completionNote;
+
+  // 상태 변경 전체 이력 (Firebase 연동 시 상세 분석에 활용)
+  final List<StatusHistoryEntry> statusHistory;
 
   InstallationRequest({
     this.id,
@@ -110,10 +149,31 @@ class InstallationRequest {
     this.status = InstallationStatus.pending,
     this.holdReason,
     DateTime? createdAt,
+    this.confirmedAt,
+    this.scheduledAt,
+    this.onHoldAt,
     this.completedAt,
+    this.cancelledAt,
+    this.lastStatusChangedAt,
     this.completionNote,
+    this.statusHistory = const [],
   }) : createdAt = createdAt ?? DateTime.now();
 
+  // ── 소요일 계산 헬퍼 (통계 활용용) ─────────────────────────────────────────
+  /// 접수 → 완료 소요일
+  int? get daysToComplete =>
+      completedAt != null ? completedAt!.difference(createdAt).inDays : null;
+
+  /// 접수 → 현재(미완료 기준) 경과일
+  int get elapsedDays => DateTime.now().difference(createdAt).inDays;
+
+  /// 마지막 상태 변경까지 소요일
+  int? get daysToLastChange =>
+      lastStatusChangedAt != null
+          ? lastStatusChangedAt!.difference(createdAt).inDays
+          : null;
+
+  // ── 직렬화 ──────────────────────────────────────────────────────────────────
   Map<String, dynamic> toLocalMap() {
     return {
       'id': id ?? DateTime.now().millisecondsSinceEpoch.toString(),
@@ -134,9 +194,17 @@ class InstallationRequest {
       'notes': notes ?? '',
       'status': status.value,
       'holdReason': holdReason ?? '',
+      // 날짜 이력
       'createdAt': createdAt.toIso8601String(),
+      'confirmedAt': confirmedAt?.toIso8601String() ?? '',
+      'scheduledAt': scheduledAt?.toIso8601String() ?? '',
+      'onHoldAt': onHoldAt?.toIso8601String() ?? '',
       'completedAt': completedAt?.toIso8601String() ?? '',
+      'cancelledAt': cancelledAt?.toIso8601String() ?? '',
+      'lastStatusChangedAt': lastStatusChangedAt?.toIso8601String() ?? '',
       'completionNote': completionNote ?? '',
+      // 상태 이력
+      'statusHistory': statusHistory.map((e) => e.toMap()).toList(),
     };
   }
 
@@ -150,6 +218,22 @@ class InstallationRequest {
           slaves.add(SlaveMeter.fromMap(item));
         }
       }
+    }
+
+    // 상태 이력 파싱
+    final rawHistory = data['statusHistory'];
+    final List<StatusHistoryEntry> history = [];
+    if (rawHistory is List) {
+      for (final item in rawHistory) {
+        if (item is Map<String, dynamic>) {
+          history.add(StatusHistoryEntry.fromMap(item));
+        }
+      }
+    }
+
+    DateTime? _parseDate(String key) {
+      final v = data[key] as String?;
+      return (v != null && v.isNotEmpty) ? DateTime.tryParse(v) : null;
     }
 
     return InstallationRequest(
@@ -166,26 +250,127 @@ class InstallationRequest {
       connectionType: data['connectionType'] as String? ?? '1:1 연결',
       slaveMeters: slaves,
       ktRelayStatus: data['ktRelayStatus'] as String? ?? '',
-      availableDate: (data['availableDate'] as String?)?.isNotEmpty == true
-          ? DateTime.tryParse(data['availableDate'] as String)
-          : null,
+      availableDate: _parseDate('availableDate'),
       buildingManagerPhone: data['buildingManagerPhone'] as String? ?? '',
       notes: (data['notes'] as String?)?.isNotEmpty == true
-          ? data['notes'] as String
-          : null,
+          ? data['notes'] as String : null,
       status: InstallationStatusExt.fromString(data['status'] as String?),
       holdReason: (data['holdReason'] as String?)?.isNotEmpty == true
-          ? data['holdReason'] as String
-          : null,
-      createdAt: data['createdAt'] != null
-          ? DateTime.tryParse(data['createdAt'] as String) ?? DateTime.now()
-          : DateTime.now(),
-      completedAt: (data['completedAt'] as String?)?.isNotEmpty == true
-          ? DateTime.tryParse(data['completedAt'] as String)
-          : null,
+          ? data['holdReason'] as String : null,
+      createdAt: _parseDate('createdAt') ?? DateTime.now(),
+      confirmedAt:  _parseDate('confirmedAt'),
+      scheduledAt:  _parseDate('scheduledAt'),
+      onHoldAt:     _parseDate('onHoldAt'),
+      completedAt:  _parseDate('completedAt'),
+      cancelledAt:  _parseDate('cancelledAt'),
+      lastStatusChangedAt: _parseDate('lastStatusChangedAt'),
       completionNote: (data['completionNote'] as String?)?.isNotEmpty == true
-          ? data['completionNote'] as String
-          : null,
+          ? data['completionNote'] as String : null,
+      statusHistory: history,
+    );
+  }
+
+  /// Firestore 저장용 Map (Timestamp 사용)
+  Map<String, dynamic> toFirestoreMap() {
+    return {
+      'id': id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      'branch': branch,
+      'managerName': managerName,
+      'managerPhone': managerPhone,
+      'buildingNumber': buildingNumber,
+      'address': address,
+      'installNumber': installNumber,
+      'machineRoomNumber': machineRoomNumber,
+      'masterMeterNumber': masterMeterNumber,
+      'masterPort': masterPort,
+      'connectionType': connectionType,
+      'slaveMeters': slaveMeters.map((s) => s.toMap()).toList(),
+      'ktRelayStatus': ktRelayStatus,
+      'availableDate': availableDate?.toIso8601String() ?? '',
+      'buildingManagerPhone': buildingManagerPhone,
+      'notes': notes ?? '',
+      'status': status.value,
+      'holdReason': holdReason ?? '',
+      // 날짜 (ISO string으로 저장 - 플랫폼 독립적)
+      'createdAt': createdAt.toIso8601String(),
+      'confirmedAt': confirmedAt?.toIso8601String() ?? '',
+      'scheduledAt': scheduledAt?.toIso8601String() ?? '',
+      'onHoldAt': onHoldAt?.toIso8601String() ?? '',
+      'completedAt': completedAt?.toIso8601String() ?? '',
+      'cancelledAt': cancelledAt?.toIso8601String() ?? '',
+      'lastStatusChangedAt': lastStatusChangedAt?.toIso8601String() ?? '',
+      'completionNote': completionNote ?? '',
+      'statusHistory': statusHistory.map((e) => e.toMap()).toList(),
+      'syncedAt': FieldValue.serverTimestamp(),
+    };
+  }
+
+  /// Firestore 문서에서 파싱 (fromLocalMap과 동일 구조)
+  factory InstallationRequest.fromFirestoreMap(
+      Map<String, dynamic> data, String docId) {
+    final rawSlaves = data['slaveMeters'];
+    final List<SlaveMeter> slaves = [];
+    if (rawSlaves is List) {
+      for (final item in rawSlaves) {
+        if (item is Map<String, dynamic>) {
+          slaves.add(SlaveMeter.fromMap(item));
+        }
+      }
+    }
+
+    final rawHistory = data['statusHistory'];
+    final List<StatusHistoryEntry> history = [];
+    if (rawHistory is List) {
+      for (final item in rawHistory) {
+        if (item is Map<String, dynamic>) {
+          history.add(StatusHistoryEntry.fromMap(item));
+        }
+      }
+    }
+
+    DateTime? parseDate(dynamic val) {
+      if (val == null) return null;
+      if (val is String && val.isNotEmpty) return DateTime.tryParse(val);
+      // Firestore Timestamp 처리
+      if (val.runtimeType.toString().contains('Timestamp')) {
+        try {
+          return (val as dynamic).toDate() as DateTime;
+        } catch (_) {}
+      }
+      return null;
+    }
+
+    return InstallationRequest(
+      id: data['id'] as String? ?? docId,
+      branch: data['branch'] as String? ?? '',
+      managerName: data['managerName'] as String? ?? '',
+      managerPhone: data['managerPhone'] as String? ?? '',
+      buildingNumber: data['buildingNumber'] as String? ?? '',
+      address: data['address'] as String? ?? '',
+      installNumber: data['installNumber'] as String? ?? '',
+      machineRoomNumber: data['machineRoomNumber'] as String? ?? '',
+      masterMeterNumber: data['masterMeterNumber'] as String? ?? '',
+      masterPort: data['masterPort'] as String? ?? '',
+      connectionType: data['connectionType'] as String? ?? '1:1 연결',
+      slaveMeters: slaves,
+      ktRelayStatus: data['ktRelayStatus'] as String? ?? '',
+      availableDate: parseDate(data['availableDate']),
+      buildingManagerPhone: data['buildingManagerPhone'] as String? ?? '',
+      notes: (data['notes'] as String?)?.isNotEmpty == true
+          ? data['notes'] as String : null,
+      status: InstallationStatusExt.fromString(data['status'] as String?),
+      holdReason: (data['holdReason'] as String?)?.isNotEmpty == true
+          ? data['holdReason'] as String : null,
+      createdAt: parseDate(data['createdAt']) ?? DateTime.now(),
+      confirmedAt: parseDate(data['confirmedAt']),
+      scheduledAt: parseDate(data['scheduledAt']),
+      onHoldAt: parseDate(data['onHoldAt']),
+      completedAt: parseDate(data['completedAt']),
+      cancelledAt: parseDate(data['cancelledAt']),
+      lastStatusChangedAt: parseDate(data['lastStatusChangedAt']),
+      completionNote: (data['completionNote'] as String?)?.isNotEmpty == true
+          ? data['completionNote'] as String : null,
+      statusHistory: history,
     );
   }
 
@@ -209,8 +394,14 @@ class InstallationRequest {
     InstallationStatus? status,
     String? holdReason,
     DateTime? createdAt,
+    DateTime? confirmedAt,
+    DateTime? scheduledAt,
+    DateTime? onHoldAt,
     DateTime? completedAt,
+    DateTime? cancelledAt,
+    DateTime? lastStatusChangedAt,
     String? completionNote,
+    List<StatusHistoryEntry>? statusHistory,
   }) {
     return InstallationRequest(
       id: id ?? this.id,
@@ -232,8 +423,14 @@ class InstallationRequest {
       status: status ?? this.status,
       holdReason: holdReason ?? this.holdReason,
       createdAt: createdAt ?? this.createdAt,
+      confirmedAt: confirmedAt ?? this.confirmedAt,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
+      onHoldAt: onHoldAt ?? this.onHoldAt,
       completedAt: completedAt ?? this.completedAt,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
+      lastStatusChangedAt: lastStatusChangedAt ?? this.lastStatusChangedAt,
       completionNote: completionNote ?? this.completionNote,
+      statusHistory: statusHistory ?? this.statusHistory,
     );
   }
 }

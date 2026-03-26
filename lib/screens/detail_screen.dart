@@ -32,6 +32,14 @@ class DetailScreen extends StatelessWidget {
                         fontWeight: FontWeight.w700)),
               ),
             ),
+          Consumer<DataService>(
+            builder: (ctx, service, _) => IconButton(
+              onPressed: () => _showDeleteDialog(ctx, service),
+              icon: const Icon(Icons.delete_outline_rounded,
+                  color: AppTheme.error),
+              tooltip: '접수 삭제',
+            ),
+          ),
         ],
       ),
       body: SafeArea(
@@ -424,6 +432,89 @@ class DetailScreen extends StatelessWidget {
                         fontSize: 12, color: Color(0xFFEA580C))),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context, DataService service) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(children: [
+          Icon(Icons.delete_outline_rounded, color: AppTheme.error),
+          SizedBox(width: 8),
+          Text('접수 삭제'),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFECACA)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(request.address,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary)),
+                  const SizedBox(height: 3),
+                  Text('${request.branch} · 건물번호 ${request.buildingNumber}',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppTheme.textSecondary)),
+                  const SizedBox(height: 3),
+                  Text('접수번호: ${request.id ?? '-'}',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppTheme.textHint)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              '이 접수 내역을 삭제하면 복구할 수 없습니다.\n정말 삭제하시겠습니까?',
+              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.5),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              minimumSize: const Size(80, 40),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              await service.deleteRequest(request.id!);
+              if (context.mounted) {
+                Navigator.pop(context); // 다이얼로그 닫기
+                Navigator.pop(context); // 상세 화면 닫기
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('접수 내역이 삭제되었습니다'),
+                    backgroundColor: AppTheme.error,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    margin: const EdgeInsets.all(16),
+                  ),
+                );
+              }
+            },
+            child: const Text('삭제', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

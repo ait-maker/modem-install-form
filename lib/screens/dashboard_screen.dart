@@ -13,16 +13,28 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
+// 기간 필터 모드
+enum _PeriodMode { monthly, weekly }
+
 class _DashboardScreenState extends State<DashboardScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _selectedBranch = '전체';
   String _searchQuery = '';
 
+  // 전체현황 탭 기간 필터
+  _PeriodMode _periodMode = _PeriodMode.monthly;
+  late DateTime _currentMonth;   // 선택된 월의 1일
+  late DateTime _currentWeek;    // 선택된 주의 월요일
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    final now = DateTime.now();
+    _currentMonth = DateTime(now.year, now.month, 1);
+    // 이번 주 월요일
+    _currentWeek = DateTime(now.year, now.month, now.day - (now.weekday - 1));
   }
 
   @override
@@ -169,67 +181,238 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   // ── 전체 현황 탭 ──────────────────────────────────────────────────────────────
   Widget _buildAllTab(DataService service) {
-    final stats = service.statusStats;
-    final filtered = service.filterRequests(
-      branch: _selectedBranch,
-      searchQuery: _searchQuery,
-    );
+    // 기간 필터 적용된 목록
+    final periodItems = _periodMode == _PeriodMode.monthly
+        ? service.getByMonth(_currentMonth.year, _currentMonth.month,
+            branch: _selectedBranch)
+        : service.getByWeek(_currentWeek, branch: _selectedBranch);
+
+    final periodStats = service.periodStats(periodItems);
+
+    // 검색 필터는 기간 필터 위에 추가 적용
+    final filtered = _searchQuery.trim().isEmpty
+        ? periodItems
+        : periodItems.where((r) {
+            final q = _searchQuery.trim().toLowerCase();
+            return r.buildingNumber.toLowerCase().contains(q) ||
+                r.address.toLowerCase().contains(q) ||
+                r.masterMeterNumber.toLowerCase().contains(q) ||
+                r.managerName.toLowerCase().contains(q) ||
+                r.installNumber.toLowerCase().contains(q);
+          }).toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          GridView.count(
-            crossAxisCount:
-                MediaQuery.of(context).size.width > 600 ? 5 : 2,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: MediaQuery.of(context).size.width > 600 ? 1.3 : 1.35,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              StatCard(
-                label: '전체 접수',
-                count: service.requests.length,
-                color: AppTheme.secondary,
-                icon: Icons.list_alt_rounded,
-                onTap: () => _tabController.animateTo(0),
-              ),
-              StatCard(
-                label: '미완료',
-                count: service.pendingRequests.length,
-                color: AppTheme.warning,
-                icon: Icons.pending_actions_rounded,
-                onTap: () => _tabController.animateTo(1),
-              ),
-              StatCard(
-                label: '설치보류',
-                count: stats['설치보류'] ?? 0,
-                color: const Color(0xFFEA580C),
-                icon: Icons.pause_circle_outline_rounded,
-              ),
-              StatCard(
-                label: '설치완료',
-                count: stats['설치완료'] ?? 0,
-                color: AppTheme.completed,
-                icon: Icons.check_circle_rounded,
-                onTap: () => _tabController.animateTo(2),
-              ),
-              StatCard(
-                label: '취소',
-                count: stats['취소'] ?? 0,
-                color: AppTheme.cancelled,
-                icon: Icons.cancel_rounded,
-              ),
-            ],
-          ),
+          // ── 월별/주별 모드 토글 + 기간 이동 ──────────────────────────────
+          _buildPeriodToggle(),
+          const SizedBox(height: 12),
+
+          // ── 기간 통계 카드 ────────────────────────────────────────────────
+          _buildPeriodStatCards(periodStats),
           const SizedBox(height: 16),
-          if (_selectedBranch == '전체' && service.requests.isNotEmpty)
+
+          // ── 지사별 차트 (전체 선택 시) ────────────────────────────────────
+          if (_selectedBranch == '전체' && periodItems.isNotEmpty)
             _buildBranchChart(service),
-          const SizedBox(height: 16),
+          if (_selectedBranch == '전체' && periodItems.isNotEmpty)
+            const SizedBox(height: 16),
+
+          // ── 접수 목록 ─────────────────────────────────────────────────────
           _buildRequestList(filtered, service),
         ],
       ),
+    );
+  }
+
+  // ── 월별/주별 토글 + 기간 이동 버튼 ─────────────────────────────────────────
+  Widget _buildPeriodToggle() {
+    final isMonthly = _periodMode == _PeriodMode.monthly;
+
+    // 현재 기간 레이블
+    String periodLabel;
+    if (isMonthly) {
+      periodLabel = DateFormat('yyyy년 M월').format(_currentMonth);
+    } else {
+      final weekEnd = _currentWeek.add(const Duration(days: 6));
+      periodLabel =
+          '${DateFormat('M/d').format(_currentWeek)} ~ ${DateFormat('M/d').format(weekEnd)}';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        children: [
+          // 모드 토글
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _periodMode = _PeriodMode.monthly),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isMonthly ? AppTheme.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text('월별',
+                        style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w700,
+                          color: isMonthly ? Colors.white : AppTheme.textSecondary,
+                        )),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _periodMode = _PeriodMode.weekly),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: !isMonthly ? AppTheme.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text('주별',
+                        style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w700,
+                          color: !isMonthly ? Colors.white : AppTheme.textSecondary,
+                        )),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // 기간 이동
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                onPressed: _prevPeriod,
+                icon: const Icon(Icons.chevron_left_rounded),
+                color: AppTheme.textSecondary,
+                iconSize: 22,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+              GestureDetector(
+                onTap: _goToday,
+                child: Column(
+                  children: [
+                    Text(periodLabel,
+                      style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary)),
+                    if (_isCurrentPeriod())
+                      Container(
+                        margin: const EdgeInsets.only(top: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryLighter,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text('현재',
+                          style: TextStyle(fontSize: 10,
+                              color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                      ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: _nextPeriod,
+                icon: const Icon(Icons.chevron_right_rounded),
+                color: AppTheme.textSecondary,
+                iconSize: 22,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 기간 이동 헬퍼
+  bool _isCurrentPeriod() {
+    final now = DateTime.now();
+    if (_periodMode == _PeriodMode.monthly) {
+      return _currentMonth.year == now.year && _currentMonth.month == now.month;
+    } else {
+      final thisWeekMon = DateTime(now.year, now.month, now.day - (now.weekday - 1));
+      return _currentWeek == thisWeekMon;
+    }
+  }
+
+  void _prevPeriod() {
+    setState(() {
+      if (_periodMode == _PeriodMode.monthly) {
+        _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1);
+      } else {
+        _currentWeek = _currentWeek.subtract(const Duration(days: 7));
+      }
+    });
+  }
+
+  void _nextPeriod() {
+    setState(() {
+      if (_periodMode == _PeriodMode.monthly) {
+        _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 1);
+      } else {
+        _currentWeek = _currentWeek.add(const Duration(days: 7));
+      }
+    });
+  }
+
+  void _goToday() {
+    final now = DateTime.now();
+    setState(() {
+      _currentMonth = DateTime(now.year, now.month, 1);
+      _currentWeek = DateTime(now.year, now.month, now.day - (now.weekday - 1));
+    });
+  }
+
+  // ── 기간 통계 카드 ──────────────────────────────────────────────────────────
+  Widget _buildPeriodStatCards(Map<String, int> stats) {
+    final total    = stats['전체'] ?? 0;
+    final complete = stats['설치완료'] ?? 0;
+    final onHold   = stats['설치보류'] ?? 0;
+    final rate     = total > 0 ? (complete / total * 100).round() : 0;
+
+    return GridView.count(
+      crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      childAspectRatio: MediaQuery.of(context).size.width > 600 ? 1.6 : 1.3,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        StatCard(label: '기간 접수', count: total,
+            color: AppTheme.secondary,   icon: Icons.list_alt_rounded),
+        StatCard(label: '설치보류',  count: onHold,
+            color: const Color(0xFFEA580C), icon: Icons.pause_circle_outline_rounded,
+            onTap: () => _tabController.animateTo(1)),
+        StatCard(label: '설치완료',  count: complete,
+            color: AppTheme.completed,   icon: Icons.check_circle_rounded,
+            onTap: () => _tabController.animateTo(2)),
+        StatCard(label: '완료율',    count: rate,
+            color: rate >= 70 ? AppTheme.primary : (rate >= 40 ? AppTheme.warning : AppTheme.error),
+            icon: Icons.donut_large_rounded,
+            suffix: '%'),
+      ],
     );
   }
 
@@ -425,7 +608,105 @@ class _DashboardScreenState extends State<DashboardScreen>
   // ── 접수 카드 ─────────────────────────────────────────────────────────────────
   Widget _buildRequestCard(
       InstallationRequest req, DataService service) {
-    return GestureDetector(
+    return Dismissible(
+      key: ValueKey(req.id),
+      direction: DismissDirection.endToStart, // 왼쪽으로 스와이프
+      confirmDismiss: (_) async {
+        return await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(children: [
+              Icon(Icons.delete_outline_rounded, color: AppTheme.error),
+              SizedBox(width: 8),
+              Text('접수 삭제'),
+            ]),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFECACA)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(req.address,
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 3),
+                      Text('${req.branch} · 건물번호 ${req.buildingNumber}',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppTheme.textSecondary)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  '삭제하면 복구할 수 없습니다.\n정말 삭제하시겠습니까?',
+                  style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.5),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('취소')),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.error,
+                  minimumSize: const Size(80, 40),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('삭제', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ) ?? false;
+      },
+      onDismissed: (_) async {
+        await service.deleteRequest(req.id!);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('접수 내역이 삭제되었습니다'),
+              backgroundColor: AppTheme.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+        }
+      },
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: AppTheme.error,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.centerRight,
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.delete_outline_rounded, color: Colors.white, size: 24),
+            SizedBox(height: 4),
+            Text('삭제', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      ),
+      child: GestureDetector(
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => DetailScreen(request: req)),
@@ -642,7 +923,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           ],
         ),
       ),
-    );
+    ),   // GestureDetector
+    );   // Dismissible
   }
 
   // ── 완료 처리 다이얼로그 ──────────────────────────────────────────────────────

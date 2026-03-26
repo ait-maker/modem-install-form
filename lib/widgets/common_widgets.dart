@@ -215,6 +215,8 @@ class StatCard extends StatelessWidget {
   final Color color;
   final IconData icon;
   final VoidCallback? onTap;
+  /// 숫자 뒤에 붙는 단위 (예: '%', '건')
+  final String? suffix;
 
   const StatCard({
     super.key,
@@ -223,6 +225,7 @@ class StatCard extends StatelessWidget {
     required this.color,
     required this.icon,
     this.onTap,
+    this.suffix,
   });
 
   @override
@@ -254,8 +257,19 @@ class StatCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Text('$count', style: TextStyle(
-              fontSize: 28, fontWeight: FontWeight.w800, color: color)),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('$count', style: TextStyle(
+                  fontSize: 28, fontWeight: FontWeight.w800, color: color)),
+                if (suffix != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4, left: 2),
+                    child: Text(suffix!, style: TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+                  ),
+              ],
+            ),
             const SizedBox(height: 2),
             Text(label, style: const TextStyle(
               fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
