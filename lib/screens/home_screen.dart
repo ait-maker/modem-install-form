@@ -87,10 +87,14 @@ class _HomeTab extends StatelessWidget {
       body: SafeArea(
         child: Consumer<DataService>(
           builder: (context, service, _) {
-            final stats   = service.statusStats;
-            final total   = service.requests.length;
+            final stats     = service.statusStats;
+            final total     = service.requests.length;
             final completed = stats['설치완료'] ?? 0;
-            final pending = service.pendingRequests.length;
+            final onHold    = stats['설치보류'] ?? 0;
+            final active    = total
+                - completed
+                - onHold
+                - (stats['접수취소'] ?? 0);
 
             return SingleChildScrollView(
               child: Column(
@@ -112,14 +116,18 @@ class _HomeTab extends StatelessWidget {
                               Expanded(child: _MiniStatCard(
                                 label: '전체 접수', count: total,
                                 color: AppTheme.secondary, icon: Icons.list_alt_rounded)),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 8),
                               Expanded(child: _MiniStatCard(
-                                label: '미완료', count: pending,
-                                color: AppTheme.warning, icon: Icons.pending_actions_rounded)),
-                              const SizedBox(width: 10),
+                                label: '진행 중', count: active,
+                                color: const Color(0xFF0284C7), icon: Icons.pending_actions_rounded)),
+                              const SizedBox(width: 8),
                               Expanded(child: _MiniStatCard(
-                                label: '설치완료', count: completed,
+                                label: '설치 완료', count: completed,
                                 color: AppTheme.primary, icon: Icons.check_circle_rounded)),
+                              const SizedBox(width: 8),
+                              Expanded(child: _MiniStatCard(
+                                label: '설치 보류', count: onHold,
+                                color: const Color(0xFFEA580C), icon: Icons.pause_circle_outline_rounded)),
                             ],
                           ),
                           const SizedBox(height: 20),
