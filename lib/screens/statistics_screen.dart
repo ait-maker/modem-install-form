@@ -226,19 +226,24 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   }
 
   // ── KPI 카드 그리드 ─────────────────────────────────
-  // active 파라미터는 하위 호환성 유지용 (KPI에서는 미사용)
   Widget _buildKpiGrid(int total, int completed, int active,
       int onHold, int cancelled, double rate, double? avgDays,
       {required List<InstallationRequest> allItems}) {
 
-    // 드릴다운 가능 카드 정의 (전체접수·평균완료일 제외)
+    // 드릴다운 가능 카드 정의
+    // filterStatuses: null → 탭 불가 / 리스트 → 해당 상태들 합산 표시
     final items = [
-      _KpiData('전체 접수',   '$total건',    Icons.list_alt_rounded,            AppTheme.secondary,  null),
-      _KpiData('설치 완료',   '$completed건', Icons.check_circle_rounded,        AppTheme.primary,    InstallationStatus.completed),
-      _KpiData('설치 보류',   '$onHold건',   Icons.pause_circle_outline_rounded, const Color(0xFFEA580C), InstallationStatus.onHold),
-      _KpiData('접수취소',    '$cancelled건', Icons.cancel_rounded,              AppTheme.cancelled,  InstallationStatus.cancelled),
+      _KpiData('전체 접수',  '$total건',    Icons.list_alt_rounded,             AppTheme.secondary,        null),
+      _KpiData('진행 중',    '$active건',   Icons.pending_actions_rounded,       const Color(0xFF0284C7),    [
+        InstallationStatus.pending,
+        InstallationStatus.confirmed,
+        InstallationStatus.scheduled,
+      ]),
+      _KpiData('설치 완료',  '$completed건', Icons.check_circle_rounded,         AppTheme.primary,           [InstallationStatus.completed]),
+      _KpiData('설치 보류',  '$onHold건',   Icons.pause_circle_outline_rounded,  const Color(0xFFEA580C),    [InstallationStatus.onHold]),
+      _KpiData('접수 취소',  '$cancelled건', Icons.cancel_rounded,               AppTheme.cancelled,         [InstallationStatus.cancelled]),
       _KpiData('평균 완료일', avgDays != null ? '${avgDays.toStringAsFixed(1)}일' : '-',
-                             Icons.timer_outlined, const Color(0xFF7C3AED),      null),
+                             Icons.timer_outlined,                               const Color(0xFF7C3AED),    null),
     ];
 
     return GridView.builder(
@@ -253,7 +258,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       itemCount: items.length,
       itemBuilder: (_, i) {
         final d = items[i];
-        final tappable = d.filterStatus != null;
+        final tappable = d.filterStatuses != null;
         return GestureDetector(
           onTap: tappable
               ? () => _showDrilldownSheet(
@@ -261,7 +266,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     label: d.label,
                     color: d.color,
                     icon: d.icon,
-                    filterStatus: d.filterStatus!,
+                    filterStatuses: d.filterStatuses!,
                     allItems: allItems,
                   )
               : null,
@@ -300,7 +305,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     // 탭 가능한 카드에만 chevron 표시
                     if (tappable)
                       Icon(Icons.chevron_right_rounded,
-                          size: 14, color: d.color.withValues(alpha: 0.6)),
+                          size: 14, color: d.color.withValues(alpha: 0.7)),
                   ],
                 ),
                 Column(
@@ -327,19 +332,20 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     required String label,
     required Color color,
     required IconData icon,
-    required InstallationStatus filterStatus,
+    required List<InstallationStatus> filterStatuses,
     required List<InstallationRequest> allItems,
   }) {
-    // 현재 필터 컨텍스트로 해당 상태의 건만 추출
+    // 설치완료 단독 카드인지 여부 → 날짜 정렬·표시 기준
+    final isCompleted = filterStatuses.length == 1 &&
+        filterStatuses.first == InstallationStatus.completed;
+
+    // 현재 필터 컨텍스트로 해당 상태들의 건만 추출
     final filtered = allItems
-        .where((r) => r.status == filterStatus)
+        .where((r) => filterStatuses.contains(r.status))
         .toList()
       ..sort((a, b) {
-          // 설치완료는 완료일 내림차순, 나머지는 접수일 내림차순
-          final dateA = (filterStatus == InstallationStatus.completed
-              ? a.completedAt : null) ?? a.createdAt;
-          final dateB = (filterStatus == InstallationStatus.completed
-              ? b.completedAt : null) ?? b.createdAt;
+          final dateA = isCompleted ? (a.completedAt ?? a.createdAt) : a.createdAt;
+          final dateB = isCompleted ? (b.completedAt ?? b.createdAt) : b.createdAt;
           return dateB.compareTo(dateA);
         });
 
@@ -357,7 +363,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         label: label,
         color: color,
         icon: icon,
-        filterStatus: filterStatus,
+        filterStatuses: filterStatuses,
         items: filtered,
         periodStr: periodStr,
         branchStr: branchStr,
@@ -866,8 +872,8 @@ class _KpiData {
   final String label, value;
   final IconData icon;
   final Color color;
-  final InstallationStatus? filterStatus; // null = 드릴다운 없음
-  const _KpiData(this.label, this.value, this.icon, this.color, this.filterStatus);
+  final List<InstallationStatus>? filterStatuses; // null = 드릴다운 없음
+  const _KpiData(this.label, this.value, this.icon, this.color, this.filterStatuses);
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -1076,7 +1082,7 @@ class _DrilldownSheet extends StatelessWidget {
   final String label;
   final Color color;
   final IconData icon;
-  final InstallationStatus filterStatus;
+  final List<InstallationStatus> filterStatuses;
   final List<InstallationRequest> items;
   final String periodStr;
   final String branchStr;
@@ -1085,7 +1091,7 @@ class _DrilldownSheet extends StatelessWidget {
     required this.label,
     required this.color,
     required this.icon,
-    required this.filterStatus,
+    required this.filterStatuses,
     required this.items,
     required this.periodStr,
     required this.branchStr,
@@ -1226,7 +1232,8 @@ class _DrilldownSheet extends StatelessWidget {
                       item: items[i],
                       statusColor: color,
                       showCompletedDate:
-                          filterStatus == InstallationStatus.completed,
+                          filterStatuses.length == 1 &&
+                          filterStatuses.first == InstallationStatus.completed,
                     ),
                   ),
           ),
