@@ -1336,6 +1336,20 @@ class _DrilldownCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 4),
+
+          // ── 1.5행: 지사명
+          Row(
+            children: [
+              const Icon(Icons.business_rounded,
+                  size: 11, color: AppTheme.textHint),
+              const SizedBox(width: 4),
+              Text(item.branch,
+                style: const TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w600,
+                  color: AppTheme.textSecondary)),
+            ],
+          ),
           const SizedBox(height: 7),
 
           // ── 2행: 건물번호 · 기계실번호 · 설치번호
