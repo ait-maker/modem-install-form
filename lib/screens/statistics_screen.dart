@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/installation_request.dart';
 import '../services/data_service.dart';
@@ -193,7 +194,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           const SizedBox(height: 12),
 
           // KPI 카드 (5개: 전체접수/설치완료/설치보류/접수취소/평균완료일)
-          _buildKpiGrid(total, completed, active, onHold, cancelled, rate, avgDays),
+          _buildKpiGrid(total, completed, active, onHold, cancelled, rate, avgDays,
+              allItems: items),
           const SizedBox(height: 20),
 
           // 완료율 게이지
@@ -223,15 +225,20 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     );
   }
 
+  // ── KPI 카드 그리드 ─────────────────────────────────
   // active 파라미터는 하위 호환성 유지용 (KPI에서는 미사용)
   Widget _buildKpiGrid(int total, int completed, int active,
-      int onHold, int cancelled, double rate, double? avgDays) {
+      int onHold, int cancelled, double rate, double? avgDays,
+      {required List<InstallationRequest> allItems}) {
+
+    // 드릴다운 가능 카드 정의 (전체접수·평균완료일 제외)
     final items = [
-      _KpiData('전체 접수',   '$total건',              Icons.list_alt_rounded,             AppTheme.secondary),
-      _KpiData('설치 완료',   '$completed건',          Icons.check_circle_rounded,         AppTheme.primary),
-      _KpiData('설치 보류',  '$onHold건',              Icons.pause_circle_outline_rounded,  const Color(0xFFEA580C)),
-      _KpiData('접수취소',   '$cancelled건',          Icons.cancel_rounded,               AppTheme.cancelled),
-      _KpiData('평균 완료일', avgDays != null ? '${avgDays.toStringAsFixed(1)}일' : '-', Icons.timer_outlined, const Color(0xFF7C3AED)),
+      _KpiData('전체 접수',   '$total건',    Icons.list_alt_rounded,            AppTheme.secondary,  null),
+      _KpiData('설치 완료',   '$completed건', Icons.check_circle_rounded,        AppTheme.primary,    InstallationStatus.completed),
+      _KpiData('설치 보류',   '$onHold건',   Icons.pause_circle_outline_rounded, const Color(0xFFEA580C), InstallationStatus.onHold),
+      _KpiData('접수취소',    '$cancelled건', Icons.cancel_rounded,              AppTheme.cancelled,  InstallationStatus.cancelled),
+      _KpiData('평균 완료일', avgDays != null ? '${avgDays.toStringAsFixed(1)}일' : '-',
+                             Icons.timer_outlined, const Color(0xFF7C3AED),      null),
     ];
 
     return GridView.builder(
@@ -246,50 +253,115 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       itemCount: items.length,
       itemBuilder: (_, i) {
         final d = items[i];
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.border),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 6, offset: const Offset(0, 2),
+        final tappable = d.filterStatus != null;
+        return GestureDetector(
+          onTap: tappable
+              ? () => _showDrilldownSheet(
+                    context,
+                    label: d.label,
+                    color: d.color,
+                    icon: d.icon,
+                    filterStatus: d.filterStatus!,
+                    allItems: allItems,
+                  )
+              : null,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: tappable ? d.color.withValues(alpha: 0.35) : AppTheme.border,
+                width: tappable ? 1.2 : 1.0,
               ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: d.color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 6, offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: d.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(d.icon, size: 16, color: d.color),
                     ),
-                    child: Icon(d.icon, size: 16, color: d.color),
-                  ),
-                  const Spacer(),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(d.value,
-                    style: TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.w800, color: d.color)),
-                  Text(d.label,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                ],
-              ),
-            ],
+                    const Spacer(),
+                    // 탭 가능한 카드에만 chevron 표시
+                    if (tappable)
+                      Icon(Icons.chevron_right_rounded,
+                          size: 14, color: d.color.withValues(alpha: 0.6)),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(d.value,
+                      style: TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.w800, color: d.color)),
+                    Text(d.label,
+                      style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  // ── 드릴다운 바텀시트 ─────────────────────────────────
+  void _showDrilldownSheet(
+    BuildContext context, {
+    required String label,
+    required Color color,
+    required IconData icon,
+    required InstallationStatus filterStatus,
+    required List<InstallationRequest> allItems,
+  }) {
+    // 현재 필터 컨텍스트로 해당 상태의 건만 추출
+    final filtered = allItems
+        .where((r) => r.status == filterStatus)
+        .toList()
+      ..sort((a, b) {
+          // 설치완료는 완료일 내림차순, 나머지는 접수일 내림차순
+          final dateA = (filterStatus == InstallationStatus.completed
+              ? a.completedAt : null) ?? a.createdAt;
+          final dateB = (filterStatus == InstallationStatus.completed
+              ? b.completedAt : null) ?? b.createdAt;
+          return dateB.compareTo(dateA);
+        });
+
+    // 기간 레이블 문자열
+    final periodStr = _selectedMonth != null
+        ? '$_selectedYear년 $_selectedMonth월'
+        : '$_selectedYear년';
+    final branchStr = _selectedBranch == '전체' ? '전체 지사' : _selectedBranch;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _DrilldownSheet(
+        label: label,
+        color: color,
+        icon: icon,
+        filterStatus: filterStatus,
+        items: filtered,
+        periodStr: periodStr,
+        branchStr: branchStr,
+      ),
     );
   }
 
@@ -794,7 +866,8 @@ class _KpiData {
   final String label, value;
   final IconData icon;
   final Color color;
-  const _KpiData(this.label, this.value, this.icon, this.color);
+  final InstallationStatus? filterStatus; // null = 드릴다운 없음
+  const _KpiData(this.label, this.value, this.icon, this.color, this.filterStatus);
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -995,5 +1068,364 @@ class _EmptyState extends StatelessWidget {
         label,
       ],
     ),
+  );
+}
+
+// ── 드릴다운 바텀시트 ─────────────────────────────────────────────────────────
+class _DrilldownSheet extends StatelessWidget {
+  final String label;
+  final Color color;
+  final IconData icon;
+  final InstallationStatus filterStatus;
+  final List<InstallationRequest> items;
+  final String periodStr;
+  final String branchStr;
+
+  const _DrilldownSheet({
+    required this.label,
+    required this.color,
+    required this.icon,
+    required this.filterStatus,
+    required this.items,
+    required this.periodStr,
+    required this.branchStr,
+  });
+
+  // AIT 담당자 연락처 안내 배너 문구
+  static const String _contactGuide =
+      '접수 내용 수정 또는 취소가 필요하신 경우,\nAIT 무선검침 담당팀(김승희 010-2708-8570)으로 연락해 주세요.';
+
+  @override
+  Widget build(BuildContext context) {
+    final sheetH = MediaQuery.of(context).size.height * 0.82;
+
+    return Container(
+      height: sheetH,
+      decoration: const BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // ── 드래그 핸들
+          Padding(
+            padding: const EdgeInsets.only(top: 10, bottom: 4),
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+
+          // ── 시트 헤더
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 12, 12),
+            child: Row(
+              children: [
+                // 상태 아이콘
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 18, color: color),
+                ),
+                const SizedBox(width: 10),
+                // 제목 + 컨텍스트
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(label,
+                            style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w800,
+                              color: color,
+                            )),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                  color: color.withValues(alpha: 0.3)),
+                            ),
+                            child: Text('${items.length}건',
+                              style: TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.w700,
+                                color: color,
+                              )),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text('$branchStr  ·  $periodStr',
+                        style: const TextStyle(
+                          fontSize: 11, color: AppTheme.textSecondary)),
+                    ],
+                  ),
+                ),
+                // 닫기 버튼
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded,
+                      size: 20, color: AppTheme.textSecondary),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1, color: AppTheme.border),
+
+          // ── AIT 연락처 안내 배너
+          //    - 설치완료 건은 수정/취소 대상이 아닐 수 있으나 일관성 있게 노출
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8E1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFFFCC02).withValues(alpha: 0.6)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline_rounded,
+                    size: 15, color: Color(0xFFB8860B)),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(_contactGuide,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF6B4F00),
+                      height: 1.5,
+                    )),
+                ),
+              ],
+            ),
+          ),
+
+          // ── 목록 or 빈 상태
+          Expanded(
+            child: items.isEmpty
+                ? _buildEmpty()
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                    itemCount: items.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) => _DrilldownCard(
+                      item: items[i],
+                      statusColor: color,
+                      showCompletedDate:
+                          filterStatus == InstallationStatus.completed,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmpty() => Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 48, color: color.withValues(alpha: 0.25)),
+        const SizedBox(height: 12),
+        Text('해당 기간에 $label 건이 없어요',
+          style: const TextStyle(
+            fontSize: 14, color: AppTheme.textSecondary)),
+      ],
+    ),
+  );
+}
+
+// ── 드릴다운 개별 카드 ─────────────────────────────────────────────────────────
+class _DrilldownCard extends StatelessWidget {
+  final InstallationRequest item;
+  final Color statusColor;
+  final bool showCompletedDate; // true → 설치일 / false → 접수일
+
+  const _DrilldownCard({
+    required this.item,
+    required this.statusColor,
+    required this.showCompletedDate,
+  });
+
+  // 상태별 색상 매핑
+  static Color _statusColor(InstallationStatus s) {
+    switch (s) {
+      case InstallationStatus.completed:  return AppTheme.primary;
+      case InstallationStatus.onHold:     return const Color(0xFFEA580C);
+      case InstallationStatus.cancelled:  return AppTheme.cancelled;
+      case InstallationStatus.scheduled:  return AppTheme.primary;
+      case InstallationStatus.confirmed:  return AppTheme.secondary;
+      case InstallationStatus.pending:    return AppTheme.warning;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 날짜 결정: 설치완료 탭이면 completedAt, 나머지는 createdAt
+    final date = (showCompletedDate && item.completedAt != null)
+        ? item.completedAt!
+        : item.createdAt;
+    final dateLabel = (showCompletedDate && item.completedAt != null)
+        ? '설치일자'
+        : '접수일자';
+    final dateFmt = DateFormat('yyyy.MM.dd').format(date);
+
+    // 건물명: buildingName 우선, 없으면 주소 앞부분
+    final displayName = (item.buildingName != null &&
+            item.buildingName!.isNotEmpty)
+        ? item.buildingName!
+        : item.address.length > 18
+            ? '${item.address.substring(0, 18)}…'
+            : item.address;
+
+    final sc = _statusColor(item.status);
+
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: AppTheme.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── 1행: 건물명 + 상태 뱃지
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(displayName,
+                  style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary),
+                  overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: sc.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: sc.withValues(alpha: 0.35)),
+                ),
+                child: Text(item.status.label,
+                  style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w700, color: sc)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+
+          // ── 2행: 건물번호 · 기계실번호 · 설치번호
+          Row(
+            children: [
+              _InfoChip(
+                icon: Icons.apartment_rounded,
+                text: '건물번호 ${item.buildingNumber}',
+              ),
+              const SizedBox(width: 6),
+              _InfoChip(
+                icon: Icons.room_preferences_rounded,
+                text: '기계실 ${item.machineRoomNumber}',
+              ),
+              const SizedBox(width: 6),
+              _InfoChip(
+                icon: Icons.tag_rounded,
+                text: '설치 ${item.installNumber}',
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+
+          // ── 3행: 연결방식 + 날짜
+          Row(
+            children: [
+              // 연결방식
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryLighter,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.device_hub_rounded,
+                        size: 11, color: AppTheme.primaryDark),
+                    const SizedBox(width: 4),
+                    Text(item.connectionType,
+                      style: const TextStyle(
+                        fontSize: 10, fontWeight: FontWeight.w600,
+                        color: AppTheme.primaryDark)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              // 날짜
+              Row(
+                children: [
+                  Icon(
+                    showCompletedDate && item.completedAt != null
+                        ? Icons.check_circle_outline_rounded
+                        : Icons.calendar_today_rounded,
+                    size: 11, color: AppTheme.textHint),
+                  const SizedBox(width: 4),
+                  Text('$dateLabel  $dateFmt',
+                    style: const TextStyle(
+                      fontSize: 10, color: AppTheme.textSecondary)),
+                ],
+              ),
+              const Spacer(),
+              // 담당자
+              Row(
+                children: [
+                  const Icon(Icons.person_outline_rounded,
+                      size: 11, color: AppTheme.textHint),
+                  const SizedBox(width: 3),
+                  Text(item.managerName,
+                    style: const TextStyle(
+                      fontSize: 10, color: AppTheme.textSecondary)),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 드릴다운 카드 내부 칩
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _InfoChip({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 11, color: AppTheme.textHint),
+      const SizedBox(width: 3),
+      Text(text,
+        style: const TextStyle(
+          fontSize: 11, color: AppTheme.textSecondary,
+          fontWeight: FontWeight.w500)),
+    ],
   );
 }

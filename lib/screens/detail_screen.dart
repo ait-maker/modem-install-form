@@ -97,14 +97,32 @@ class DetailScreen extends StatelessWidget {
                             value: request.buildingNumber),
                         const Divider(height: 1),
                         InfoRow(label: '설치 주소', value: request.address),
+                        // 건물명 (값이 있을 때만 표시)
+                        if (request.buildingName != null &&
+                            request.buildingName!.isNotEmpty) ...[
+                          const Divider(height: 1),
+                          InfoRow(
+                              label: '건물명',
+                              value: request.buildingName!,
+                              highlight: true),
+                        ],
+                        // 기계실 위치 (값이 있을 때만 표시)
+                        if (request.machineRoomLocation != null &&
+                            request.machineRoomLocation!.isNotEmpty) ...[
+                          const Divider(height: 1),
+                          InfoRow(
+                              label: '기계실 위치',
+                              value: request.machineRoomLocation!),
+                        ],
+                        const Divider(height: 1),
+                        // 순서: 기계실번호 → 설치번호
+                        InfoRow(
+                            label: '기계실번호',
+                            value: request.machineRoomNumber),
                         const Divider(height: 1),
                         InfoRow(
                             label: '설치번호',
                             value: request.installNumber),
-                        const Divider(height: 1),
-                        InfoRow(
-                            label: '기계실번호',
-                            value: request.machineRoomNumber),
                       ],
                     ),
                   ),

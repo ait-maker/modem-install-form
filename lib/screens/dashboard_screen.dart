@@ -6,6 +6,7 @@ import '../services/data_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
 import 'detail_screen.dart';
+import '../services/web_download.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -49,22 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text('관리자 대시보드'),
-        actions: [
-          Consumer<DataService>(
-            builder: (context, service, _) => IconButton(
-              onPressed: () => _showExportDialog(context, service),
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryLighter,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.download_rounded, size: 18, color: AppTheme.primary),
-              ),
-              tooltip: 'CSV 내보내기',
-            ),
-          ),
-        ],
+        actions: const [],  // 탭별 다운로드 버튼으로 이전
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppTheme.primary,
@@ -181,7 +167,9 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   // ── 전체 현황 탭 ──────────────────────────────────────────────────────────────
   Widget _buildAllTab(DataService service) {
-    // 기간 필터 적용된 목록
+    // 기간 필터 적용된 목록 (전체현황 탭에서는 기간필터 없이 지사+검색만 적용)
+    final allItems = service.filterRequests(
+        branch: _selectedBranch, searchQuery: _searchQuery);
     final periodItems = _periodMode == _PeriodMode.monthly
         ? service.getByMonth(_currentMonth.year, _currentMonth.month,
             branch: _selectedBranch)
@@ -221,6 +209,11 @@ class _DashboardScreenState extends State<DashboardScreen>
 
           // ── 접수 목록 ─────────────────────────────────────────────────────
           _buildRequestList(filtered, service),
+          const SizedBox(height: 16),
+
+          // ── 다운로드 버튼 3개 ─────────────────────────────────────────────
+          _buildDownloadButtons(service, allItems),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -418,45 +411,59 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   // ── 미완료 탭 ─────────────────────────────────────────────────────────────────
   Widget _buildPendingTab(DataService service) {
-    final filtered = service
-        .filterRequests(branch: _selectedBranch, searchQuery: _searchQuery)
+    final allItems = service.filterRequests(
+        branch: _selectedBranch, searchQuery: _searchQuery);
+    final filtered = allItems
         .where((r) =>
             r.status != InstallationStatus.completed &&
             r.status != InstallationStatus.cancelled)
         .toList();
 
-    if (filtered.isEmpty) {
-      return const EmptyStateWidget(
-        message: '미완료 접수가 없습니다',
-        subMessage: '모든 접수가 완료되었거나 아직 접수가 없습니다',
-        icon: Icons.check_circle_outline_rounded,
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: filtered.length,
-      itemBuilder: (_, i) => _buildRequestCard(filtered[i], service),
+    return Column(
+      children: [
+        Expanded(
+          child: filtered.isEmpty
+              ? const EmptyStateWidget(
+                  message: '미완료 접수가 없습니다',
+                  subMessage: '모든 접수가 완료되었거나 아직 접수가 없습니다',
+                  icon: Icons.check_circle_outline_rounded,
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  itemCount: filtered.length,
+                  itemBuilder: (_, i) => _buildRequestCard(filtered[i], service),
+                ),
+        ),
+        _buildDownloadButtons(service, allItems),
+      ],
     );
   }
 
   // ── 완료 탭 ───────────────────────────────────────────────────────────────────
   Widget _buildCompletedTab(DataService service) {
-    final filtered = service
-        .filterRequests(branch: _selectedBranch, searchQuery: _searchQuery)
+    final allItems = service.filterRequests(
+        branch: _selectedBranch, searchQuery: _searchQuery);
+    final filtered = allItems
         .where((r) => r.status == InstallationStatus.completed)
         .toList();
 
-    if (filtered.isEmpty) {
-      return const EmptyStateWidget(
-        message: '완료된 설치가 없습니다',
-        subMessage: '설치 완료 처리된 접수가 없습니다',
-        icon: Icons.inbox_rounded,
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: filtered.length,
-      itemBuilder: (_, i) => _buildRequestCard(filtered[i], service),
+    return Column(
+      children: [
+        Expanded(
+          child: filtered.isEmpty
+              ? const EmptyStateWidget(
+                  message: '완료된 설치가 없습니다',
+                  subMessage: '설치 완료 처리된 접수가 없습니다',
+                  icon: Icons.inbox_rounded,
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  itemCount: filtered.length,
+                  itemBuilder: (_, i) => _buildRequestCard(filtered[i], service),
+                ),
+        ),
+        _buildDownloadButtons(service, allItems),
+      ],
     );
   }
 
@@ -1352,194 +1359,130 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  // ── CSV 내보내기 다이얼로그 ───────────────────────────────────────────────────
-  void _showExportDialog(BuildContext ctx, DataService service) {
-    // 항상 '전체'로 초기화 (지사 필터와 무관하게)
-    String exportBranch = '전체';
+  // ── 탭별 다운로드 버튼 바 (전체 / 미완료 / 설치완료) ────────────────────────
+  Widget _buildDownloadButtons(
+      DataService service, List<InstallationRequest> allItems) {
+    final branch = _selectedBranch;
+    final dateStr = DateFormat('yyyyMMdd').format(DateTime.now());
 
-    showDialog(
-      context: ctx,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final exportCount = exportBranch == '전체'
-              ? service.requests.length
-              : service.getByBranch(exportBranch).length;
-          final completedCount = exportBranch == '전체'
-              ? service.requests
-                  .where((r) => r.status == InstallationStatus.completed)
-                  .length
-              : service
-                  .getByBranch(exportBranch)
-                  .where((r) => r.status == InstallationStatus.completed)
-                  .length;
-          final pendingCount = exportCount - completedCount;
+    final pendingItems = allItems
+        .where((r) =>
+            r.status != InstallationStatus.completed &&
+            r.status != InstallationStatus.cancelled)
+        .toList();
+    final completedItems = allItems
+        .where((r) => r.status == InstallationStatus.completed)
+        .toList();
 
-          return AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: const Row(children: [
-              Icon(Icons.download_rounded, color: AppTheme.primary),
-              SizedBox(width: 8),
-              Text('CSV 내보내기'),
-            ]),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('지사 선택',
-                    style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                DropdownButton<String>(
-                  value: exportBranch,
-                  isExpanded: true,
-                  underline: Container(
-                    height: 1,
-                    color: AppTheme.border,
-                  ),
-                  icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                      color: AppTheme.textSecondary),
-                  style: const TextStyle(
-                      fontSize: 13, color: AppTheme.textPrimary),
-                  // 목록: 전체 → 각 지사
-                  items: ['전체', ...branchList]
-                      .map((b) {
-                        final cnt = b == '전체'
-                            ? service.requests.length
-                            : service.getByBranch(b).length;
-                        return DropdownMenuItem(
-                          value: b,
-                          child: Text('$b  ($cnt건)'),
-                        );
-                      })
-                      .toList(),
-                  onChanged: (v) =>
-                      setDialogState(() => exportBranch = v ?? '전체'),
-                ),
-                const SizedBox(height: 12),
-                // 선택 지사 요약 카드
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryLighter,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        const Icon(Icons.info_outline_rounded,
-                            size: 14, color: AppTheme.primary),
-                        const SizedBox(width: 6),
-                        Text(
-                          exportBranch == '전체'
-                              ? '전체 지사 데이터'
-                              : exportBranch,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.primaryDark),
-                        ),
-                      ]),
-                      const SizedBox(height: 8),
-                      Row(children: [
-                        _exportStatChip('전체', exportCount,
-                            AppTheme.secondary),
-                        const SizedBox(width: 6),
-                        _exportStatChip('완료', completedCount,
-                            AppTheme.primary),
-                        const SizedBox(width: 6),
-                        _exportStatChip('미완료', pendingCount,
-                            AppTheme.warning),
-                      ]),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('취소')),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(110, 40)),
-                onPressed: exportCount == 0
-                    ? null
-                    : () {
-                        final items = exportBranch == '전체'
-                            ? service.requests.toList()
-                            : service.getByBranch(exportBranch);
-                        _exportCsv(ctx, service, items, exportBranch);
-                        Navigator.pop(ctx);
-                      },
-                icon: const Icon(Icons.download_rounded, size: 16),
-                label: Text('$exportCount건 다운로드'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _exportStatChip(String label, int count, Color color) {
+    // 텍스트 링크 스타일 인라인 다운로드 버튼 (한 줄, 최소 영역)
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border(top: BorderSide(color: AppTheme.border, width: 0.5)),
       ),
-      child: Text(
-        '$label $count건',
-        style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: color),
+      child: Row(
+        children: [
+          const Icon(Icons.download_rounded,
+              size: 11, color: AppTheme.textHint),
+          const SizedBox(width: 4),
+          Text(
+            '다운로드:',
+            style: const TextStyle(fontSize: 11, color: AppTheme.textHint),
+          ),
+          const SizedBox(width: 8),
+          _inlineTextBtn(
+            label: '전체 ${allItems.length}건',
+            enabled: allItems.isNotEmpty,
+            onTap: allItems.isEmpty
+                ? null
+                : () => _doDownload(context, allItems, '${branch}_전체_$dateStr'),
+          ),
+          _inlineDivider(),
+          _inlineTextBtn(
+            label: '미완료 ${pendingItems.length}건',
+            enabled: pendingItems.isNotEmpty,
+            onTap: pendingItems.isEmpty
+                ? null
+                : () => _doDownload(
+                    context, pendingItems, '${branch}_미완료_$dateStr'),
+          ),
+          _inlineDivider(),
+          _inlineTextBtn(
+            label: '설치완료 ${completedItems.length}건',
+            enabled: completedItems.isNotEmpty,
+            onTap: completedItems.isEmpty
+                ? null
+                : () => _doDownload(
+                    context, completedItems, '${branch}_설치완료_$dateStr'),
+          ),
+        ],
       ),
     );
   }
 
-  void _exportCsv(BuildContext context, DataService service,
-      List<InstallationRequest> items, String branch) {
-    final csv = service.generateCsv(items);
-    final filename =
-        '무선모뎀설치접수_${branch}_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
-
-    // Web 다운로드 시도
-    try {
-      // ignore: undefined_prefixed_name
-      _webDownload(csv, filename);
-    } catch (_) {}
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$branch 데이터 ${items.length}건 다운로드 준비 완료'),
-        backgroundColor: AppTheme.primary,
-        behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.all(16),
-        action: SnackBarAction(
-          label: '확인',
-          textColor: Colors.white,
-          onPressed: () {},
+  Widget _inlineTextBtn({
+    required String label,
+    required bool enabled,
+    required VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          color: enabled ? AppTheme.primary : AppTheme.textHint,
+          decoration: enabled ? TextDecoration.underline : TextDecoration.none,
+          decorationColor: AppTheme.primary,
         ),
       ),
     );
   }
 
-  void _webDownload(String content, String filename) {
-    // dart:html 기반 다운로드 (web only)
-    try {
-      // ignore: avoid_web_libraries_in_flutter
-      final element = _createAnchorElement(content, filename);
-      element.call();
-    } catch (_) {}
+  Widget _inlineDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Text('|',
+          style: TextStyle(
+              fontSize: 11,
+              color: AppTheme.border,
+              fontWeight: FontWeight.w300)),
+    );
   }
 
-  dynamic _createAnchorElement(String content, String filename) {
-    return () {};
+  void _doDownload(BuildContext context, List<InstallationRequest> items,
+      String nameSuffix) {
+    final service = context.read<DataService>();
+    final csv = service.generateCsv(items);
+    final filename = '무선모뎀설치접수_$nameSuffix.csv';
+    try {
+      downloadCsvWeb(csv, filename);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('다운로드 실패: $e'),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+      return;
+    }
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${items.length}건 다운로드 완료 ($filename)'),
+          backgroundColor: AppTheme.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    }
   }
 }

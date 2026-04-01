@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/installation_request.dart';
+import 'telegram_service.dart';
 // branchList는 installation_request.dart에서 export됨
 
 class DataService extends ChangeNotifier {
@@ -14,6 +15,7 @@ class DataService extends ChangeNotifier {
   // Firestore 인스턴스
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
   static const String _fsCollection = 'installation_requests';
+  static const String _fsBranchManagers = 'branch_managers';
 
   List<InstallationRequest> get requests => List.unmodifiable(_requests);
   bool get isLoading => _isLoading;
@@ -182,6 +184,41 @@ class DataService extends ChangeNotifier {
     }
   }
 
+  /// 지사명으로 담당자 정보 조회 (Firestore branch_managers)
+  /// 반환값: {'name': '홍길동', 'phone': '010-0000-0000'}
+  /// 담당자 미정이면 {'name': '', 'phone': ''} 반환
+  Future<Map<String, String>> fetchBranchManager(String branch) async {
+    try {
+      final doc =
+          await _db.collection(_fsBranchManagers).doc(branch).get();
+      if (!doc.exists) return {'name': '', 'phone': ''};
+      final data = doc.data()!;
+      return {
+        'name': (data['name'] as String?) ?? '',
+        'phone': (data['phone'] as String?) ?? '',
+      };
+    } catch (e) {
+      if (kDebugMode) debugPrint('fetchBranchManager error: $e');
+      return {'name': '', 'phone': ''};
+    }
+  }
+
+  /// 중복 접수 체크 (건물번호 + 기계실번호 + 설치번호)
+  /// 취소/완료 제외한 활성 접수 중 동일 조합이 있으면 해당 접수를 반환
+  InstallationRequest? findDuplicate(InstallationRequest request) {
+    final buildingNumber = request.buildingNumber.trim();
+    final machineRoomNumber = request.machineRoomNumber.trim();
+    final installNumber = request.installNumber.trim();
+
+    return _requests.where((r) {
+      // 취소된 접수는 중복 체크 제외
+      if (r.status == InstallationStatus.cancelled) return false;
+      return r.buildingNumber.trim() == buildingNumber &&
+          r.machineRoomNumber.trim() == machineRoomNumber &&
+          r.installNumber.trim() == installNumber;
+    }).firstOrNull;
+  }
+
   Future<bool> addRequest(InstallationRequest request) async {
     try {
       final newId = DateTime.now().millisecondsSinceEpoch.toString();
@@ -191,6 +228,8 @@ class DataService extends ChangeNotifier {
       await _saveToLocal();
       // Firestore 동기화 (비동기 - UI 차단 없음)
       unawaited(_saveToFirestore(newRequest));
+      // 텔레그램 알림 (비동기 - 접수 결과에 영향 없음)
+      unawaited(TelegramService.notifyNewRequest(newRequest));
       notifyListeners();
       return true;
     } catch (e) {
@@ -447,7 +486,7 @@ class DataService extends ChangeNotifier {
     final buf = StringBuffer();
     buf.write('\uFEFF'); // BOM
     buf.writeln(
-      '접수번호,지사,담당자,연락처,건물번호,설치주소,설치번호,기계실번호,'
+      '접수번호,지사,담당자,연락처,건물번호,설치주소,건물명,기계실위치,기계실번호,설치번호,'
       '마스터열량계번호,마스터포트,연결방식,'
       '슬레이브1번호,슬레이브1포트,슬레이브2번호,슬레이브2포트,슬레이브3번호,슬레이브3포트,'
       'KT중계기,설치가능일,관리자연락처,기타사항,'
@@ -465,8 +504,10 @@ class DataService extends ChangeNotifier {
         r.managerPhone,
         r.buildingNumber,
         '"${r.address}"',
-        r.installNumber,
+        r.buildingName ?? '',
+        r.machineRoomLocation ?? '',
         r.machineRoomNumber,
+        r.installNumber,
         r.masterMeterNumber,
         r.masterPort,
         r.connectionType,

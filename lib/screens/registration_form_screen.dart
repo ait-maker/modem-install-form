@@ -22,14 +22,17 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
 
   // ── Step 1: 지사/담당자
   String? _branch;
+  bool _isLoadingManager = false;  // 담당자 정보 로딩 중
   final _managerNameCtrl = TextEditingController();
   final _managerPhoneCtrl = TextEditingController();
 
   // ── Step 2: 설치 위치
   final _buildingNumberCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
-  final _installNumberCtrl = TextEditingController();
-  final _machineRoomCtrl = TextEditingController();
+  final _buildingNameCtrl = TextEditingController();      // 건물명 (신규, 필수)
+  final _machineRoomLocationCtrl = TextEditingController(); // 기계실위치 (신규, 선택)
+  final _machineRoomCtrl = TextEditingController();        // 기계실번호
+  final _installNumberCtrl = TextEditingController();      // 설치번호
 
   // ── Step 3: 장비 정보
   String _connectionType = '1:1 연결';
@@ -57,8 +60,10 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
     _managerPhoneCtrl.dispose();
     _buildingNumberCtrl.dispose();
     _addressCtrl.dispose();
-    _installNumberCtrl.dispose();
+    _buildingNameCtrl.dispose();
+    _machineRoomLocationCtrl.dispose();
     _machineRoomCtrl.dispose();
+    _installNumberCtrl.dispose();
     _masterMeterCtrl.dispose();
     _masterPortCtrl.dispose();
     for (final c in _slaveMeterCtrls) c.dispose();
@@ -224,13 +229,31 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
                 hintText: '지사를 선택해주세요',
                 validator: (v) =>
                     v == null || v.isEmpty ? '지사를 선택해주세요' : null,
-                onChanged: (v) => setState(() => _branch = v),
+                onChanged: _onBranchChanged,
               ),
               const SizedBox(height: 16),
-              const FieldLabel(label: '담당자 성함', required: true),
+              // 담당자 성함
+              Row(
+                children: [
+                  const FieldLabel(label: '담당자 성함', required: true),
+                  if (_isLoadingManager) ...[
+                    const SizedBox(width: 8),
+                    const SizedBox(
+                      width: 12, height: 12,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text('담당자 정보 불러오는 중...',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF888888))),
+                  ],
+                ],
+              ),
               AppTextField(
                 controller: _managerNameCtrl,
-                hintText: '담당자 성함을 입력해주세요',
+                hintText: _branch == null
+                    ? '지사를 먼저 선택해주세요'
+                    : '담당자 성함을 입력해주세요',
+                readOnly: _isLoadingManager,
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? '담당자 성함을 입력해주세요' : null,
               ),
@@ -238,7 +261,8 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
               const FieldLabel(label: '담당자 연락처', required: true),
               AppTextField(
                 controller: _managerPhoneCtrl,
-                hintText: '010-0000-0000',
+                hintText: _branch == null ? '지사를 먼저 선택해주세요' : '010-0000-0000',
+                readOnly: _isLoadingManager,
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9\-]')),
@@ -274,6 +298,8 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
               const SectionHeader(
                   title: '설치 위치 정보', icon: Icons.location_on_rounded),
               const SizedBox(height: 20),
+
+              // ① 건물번호
               const FieldLabel(label: '건물번호', required: true),
               AppTextField(
                 controller: _buildingNumberCtrl,
@@ -282,6 +308,8 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
                     v == null || v.trim().isEmpty ? '건물번호를 입력해주세요' : null,
               ),
               const SizedBox(height: 16),
+
+              // ② 설치 주소
               const FieldLabel(label: '설치 주소', required: true),
               AppTextField(
                 controller: _addressCtrl,
@@ -296,16 +324,36 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // ③ 건물명 (신규, 필수)
+              const FieldLabel(label: '건물명', required: true),
+              AppTextField(
+                controller: _buildingNameCtrl,
+                hintText: '건물명을 입력해주세요 (예: 한빛아파트)',
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? '건물명을 입력해주세요' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // ④ 기계실 위치 (신규, 선택)
+              const FieldLabel(label: '기계실 위치', required: false),
+              AppTextField(
+                controller: _machineRoomLocationCtrl,
+                hintText: '기계실 위치를 입력해주세요 (예: 지하 1층)',
+              ),
+              const SizedBox(height: 16),
+
+              // ⑤ 기계실번호 + 설치번호 (순서: 기계실번호 먼저)
               Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const FieldLabel(label: '설치번호', required: true),
+                        const FieldLabel(label: '기계실번호', required: true),
                         AppTextField(
-                          controller: _installNumberCtrl,
-                          hintText: '설치번호',
+                          controller: _machineRoomCtrl,
+                          hintText: '기계실번호',
                           validator: (v) => v == null || v.trim().isEmpty
                               ? '필수'
                               : null,
@@ -318,10 +366,10 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const FieldLabel(label: '기계실번호', required: true),
+                        const FieldLabel(label: '설치번호', required: true),
                         AppTextField(
-                          controller: _machineRoomCtrl,
-                          hintText: '기계실번호',
+                          controller: _installNumberCtrl,
+                          hintText: '설치번호',
                           validator: (v) => v == null || v.trim().isEmpty
                               ? '필수'
                               : null,
@@ -869,6 +917,14 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
             InfoRow(label: '건물번호', value: _buildingNumberCtrl.text),
           if (_addressCtrl.text.isNotEmpty)
             InfoRow(label: '설치주소', value: _addressCtrl.text),
+          if (_buildingNameCtrl.text.isNotEmpty)
+            InfoRow(label: '건물명', value: _buildingNameCtrl.text),
+          if (_machineRoomLocationCtrl.text.isNotEmpty)
+            InfoRow(label: '기계실위치', value: _machineRoomLocationCtrl.text),
+          if (_machineRoomCtrl.text.isNotEmpty)
+            InfoRow(label: '기계실번호', value: _machineRoomCtrl.text),
+          if (_installNumberCtrl.text.isNotEmpty)
+            InfoRow(label: '설치번호', value: _installNumberCtrl.text),
           InfoRow(label: '연결방식', value: _connectionType),
           if (_masterMeterCtrl.text.isNotEmpty)
             InfoRow(
@@ -984,6 +1040,26 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
     );
   }
 
+  // ── 지사 선택 시 담당자 자동입력 ──────────────────────────────────────────────────
+  Future<void> _onBranchChanged(String? branch) async {
+    if (branch == null) return;
+    setState(() {
+      _branch = branch;
+      _isLoadingManager = true;
+    });
+
+    final service = context.read<DataService>();
+    final manager = await service.fetchBranchManager(branch);
+
+    if (mounted) {
+      setState(() {
+        _isLoadingManager = false;
+        _managerNameCtrl.text = manager['name'] ?? '';
+        _managerPhoneCtrl.text = manager['phone'] ?? '';
+      });
+    }
+  }
+
   // ── 유효성 검사 & 제출 ────────────────────────────────────────────────────────
   void _onNextOrSubmit() {
     bool valid = true;
@@ -1038,6 +1114,10 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
       managerPhone: _managerPhoneCtrl.text.trim(),
       buildingNumber: _buildingNumberCtrl.text.trim(),
       address: _addressCtrl.text.trim(),
+      buildingName: _buildingNameCtrl.text.trim().isEmpty
+          ? null : _buildingNameCtrl.text.trim(),
+      machineRoomLocation: _machineRoomLocationCtrl.text.trim().isEmpty
+          ? null : _machineRoomLocationCtrl.text.trim(),
       installNumber: _installNumberCtrl.text.trim(),
       machineRoomNumber: _machineRoomCtrl.text.trim(),
       masterMeterNumber: _masterMeterCtrl.text.trim(),
@@ -1053,6 +1133,17 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
     );
 
     final service = context.read<DataService>();
+
+    // ── 중복 접수 검사 ────────────────────────────────────────────────────────
+    final duplicate = service.findDuplicate(request);
+    if (duplicate != null) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        _showDuplicateDialog(duplicate);
+      }
+      return;
+    }
+
     final success = await service.addRequest(request);
 
     if (mounted) {
@@ -1063,6 +1154,136 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
         _showSnack('접수 저장에 실패했습니다. 다시 시도해주세요.');
       }
     }
+  }
+
+  // ── 중복 접수 경고 다이얼로그 ──────────────────────────────────────────────────
+  void _showDuplicateDialog(InstallationRequest dup) {
+    // 상태 한글 변환 (enum label 확장 활용)
+    final statusText = dup.status.label;
+
+    final createdStr =
+        '${dup.createdAt.year}-${dup.createdAt.month.toString().padLeft(2, '0')}-${dup.createdAt.day.toString().padLeft(2, '0')}';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFE53935), size: 24),
+            SizedBox(width: 8),
+            Text(
+              '중복 접수 불가',
+              style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFE53935)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '동일한 위치에 이미 접수된 내역이 있습니다.\n중복 접수는 불가합니다.',
+              style: TextStyle(fontSize: 14, height: 1.5),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFA5D6A7)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Icon(Icons.info_outline_rounded,
+                      size: 16, color: Color(0xFF2E7D32)),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '기존 접수된 곳으로 빠른 시일 내 설치가 진행될 예정입니다.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF2E7D32),
+                        height: 1.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3F3),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFFCDD2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _dupInfoRow('건물번호', dup.buildingNumber),
+                  _dupInfoRow('기계실번호', dup.machineRoomNumber),
+                  _dupInfoRow('설치번호', dup.installNumber),
+                  _dupInfoRow('지사', dup.branch),
+                  _dupInfoRow('접수일', createdStr),
+                  _dupInfoRow('현재 상태', statusText),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0ea271),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('확인 (접수폼으로 돌아가기)',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dupInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 72,
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF888888),
+                    fontWeight: FontWeight.w500)),
+          ),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF212529),
+                  fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
   }
 
   void _showSuccessDialog() {

@@ -27,6 +27,9 @@ dependencies:
   # Icons
   cupertino_icons: ^1.0.8
 
+  # Web APIs (dart:js_interop 기반 다운로드)
+  web: 1.1.1
+
   # Firebase
   firebase_core: 3.6.0
   cloud_firestore: 5.4.3

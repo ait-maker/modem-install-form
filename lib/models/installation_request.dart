@@ -106,6 +106,10 @@ class InstallationRequest {
   // 슬레이브 (1:N 시 최대 3개)
   final List<SlaveMeter> slaveMeters;
 
+  // 건물명 및 기계실 위치 (신규)
+  final String? buildingName;       // 건물명 (필수)
+  final String? machineRoomLocation; // 기계실 위치 (선택)
+
   // 기타
   final String ktRelayStatus;
   final DateTime? availableDate;
@@ -142,6 +146,8 @@ class InstallationRequest {
     required this.masterPort,
     required this.connectionType,
     this.slaveMeters = const [],
+    this.buildingName,
+    this.machineRoomLocation,
     required this.ktRelayStatus,
     this.availableDate,
     required this.buildingManagerPhone,
@@ -188,6 +194,8 @@ class InstallationRequest {
       'masterPort': masterPort,
       'connectionType': connectionType,
       'slaveMeters': slaveMeters.map((s) => s.toMap()).toList(),
+      'buildingName': buildingName ?? '',
+      'machineRoomLocation': machineRoomLocation ?? '',
       'ktRelayStatus': ktRelayStatus,
       'availableDate': availableDate?.toIso8601String() ?? '',
       'buildingManagerPhone': buildingManagerPhone,
@@ -249,6 +257,10 @@ class InstallationRequest {
       masterPort: data['masterPort'] as String? ?? '',
       connectionType: data['connectionType'] as String? ?? '1:1 연결',
       slaveMeters: slaves,
+      buildingName: (data['buildingName'] as String?)?.isNotEmpty == true
+          ? data['buildingName'] as String : null,
+      machineRoomLocation: (data['machineRoomLocation'] as String?)?.isNotEmpty == true
+          ? data['machineRoomLocation'] as String : null,
       ktRelayStatus: data['ktRelayStatus'] as String? ?? '',
       availableDate: _parseDate('availableDate'),
       buildingManagerPhone: data['buildingManagerPhone'] as String? ?? '',
@@ -285,6 +297,8 @@ class InstallationRequest {
       'masterPort': masterPort,
       'connectionType': connectionType,
       'slaveMeters': slaveMeters.map((s) => s.toMap()).toList(),
+      'buildingName': buildingName ?? '',
+      'machineRoomLocation': machineRoomLocation ?? '',
       'ktRelayStatus': ktRelayStatus,
       'availableDate': availableDate?.toIso8601String() ?? '',
       'buildingManagerPhone': buildingManagerPhone,
@@ -353,6 +367,10 @@ class InstallationRequest {
       masterPort: data['masterPort'] as String? ?? '',
       connectionType: data['connectionType'] as String? ?? '1:1 연결',
       slaveMeters: slaves,
+      buildingName: (data['buildingName'] as String?)?.isNotEmpty == true
+          ? data['buildingName'] as String : null,
+      machineRoomLocation: (data['machineRoomLocation'] as String?)?.isNotEmpty == true
+          ? data['machineRoomLocation'] as String : null,
       ktRelayStatus: data['ktRelayStatus'] as String? ?? '',
       availableDate: parseDate(data['availableDate']),
       buildingManagerPhone: data['buildingManagerPhone'] as String? ?? '',
@@ -387,6 +405,8 @@ class InstallationRequest {
     String? masterPort,
     String? connectionType,
     List<SlaveMeter>? slaveMeters,
+    String? buildingName,
+    String? machineRoomLocation,
     String? ktRelayStatus,
     DateTime? availableDate,
     String? buildingManagerPhone,
@@ -416,6 +436,8 @@ class InstallationRequest {
       masterPort: masterPort ?? this.masterPort,
       connectionType: connectionType ?? this.connectionType,
       slaveMeters: slaveMeters ?? this.slaveMeters,
+      buildingName: buildingName ?? this.buildingName,
+      machineRoomLocation: machineRoomLocation ?? this.machineRoomLocation,
       ktRelayStatus: ktRelayStatus ?? this.ktRelayStatus,
       availableDate: availableDate ?? this.availableDate,
       buildingManagerPhone: buildingManagerPhone ?? this.buildingManagerPhone,
