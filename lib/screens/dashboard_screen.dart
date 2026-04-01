@@ -383,7 +383,10 @@ class _DashboardScreenState extends State<DashboardScreen>
     final total    = stats['전체'] ?? 0;
     final complete = stats['설치완료'] ?? 0;
     final onHold   = stats['설치보류'] ?? 0;
-    final rate     = total > 0 ? (complete / total * 100).round() : 0;
+    final active   = total
+        - complete
+        - onHold
+        - (stats['접수취소'] ?? 0);
 
     return GridView.count(
       crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
@@ -393,18 +396,17 @@ class _DashboardScreenState extends State<DashboardScreen>
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
-        StatCard(label: '기간 접수', count: total,
+        StatCard(label: '전체 접수', count: total,
             color: AppTheme.secondary,   icon: Icons.list_alt_rounded),
-        StatCard(label: '설치보류',  count: onHold,
-            color: const Color(0xFFEA580C), icon: Icons.pause_circle_outline_rounded,
+        StatCard(label: '진행 중',   count: active,
+            color: const Color(0xFF0284C7), icon: Icons.pending_actions_rounded,
             onTap: () => _tabController.animateTo(1)),
-        StatCard(label: '설치완료',  count: complete,
+        StatCard(label: '설치 완료', count: complete,
             color: AppTheme.completed,   icon: Icons.check_circle_rounded,
             onTap: () => _tabController.animateTo(2)),
-        StatCard(label: '완료율',    count: rate,
-            color: rate >= 70 ? AppTheme.primary : (rate >= 40 ? AppTheme.warning : AppTheme.error),
-            icon: Icons.donut_large_rounded,
-            suffix: '%'),
+        StatCard(label: '설치 보류', count: onHold,
+            color: const Color(0xFFEA580C), icon: Icons.pause_circle_outline_rounded,
+            onTap: () => _tabController.animateTo(1)),
       ],
     );
   }

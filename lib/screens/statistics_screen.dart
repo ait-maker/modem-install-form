@@ -1234,6 +1234,9 @@ class _DrilldownSheet extends StatelessWidget {
                       showCompletedDate:
                           filterStatuses.length == 1 &&
                           filterStatuses.first == InstallationStatus.completed,
+                      showHoldReason:
+                          filterStatuses.length == 1 &&
+                          filterStatuses.first == InstallationStatus.onHold,
                     ),
                   ),
           ),
@@ -1261,11 +1264,13 @@ class _DrilldownCard extends StatelessWidget {
   final InstallationRequest item;
   final Color statusColor;
   final bool showCompletedDate; // true → 설치일 / false → 접수일
+  final bool showHoldReason;   // true → 보류 사유 뱃지 표시 (설치보류 카드 전용)
 
   const _DrilldownCard({
     required this.item,
     required this.statusColor,
     required this.showCompletedDate,
+    this.showHoldReason = false,
   });
 
   // 상태별 색상 매핑
@@ -1372,6 +1377,39 @@ class _DrilldownCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 7),
+
+          // ── 2.5행: 보류 사유 (설치보류 카드 전용)
+          if (showHoldReason && item.holdReason != null && item.holdReason!.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3E0),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFEA580C).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.report_problem_outlined,
+                      size: 12, color: Color(0xFFEA580C)),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      '보류 사유: ${item.holdReason}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF9A3412),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 7),
+          ],
 
           // ── 3행: 연결방식 + 날짜
           Row(
