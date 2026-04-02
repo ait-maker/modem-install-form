@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/installation_request.dart';
 import '../services/data_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_responsive.dart';
 import '../widgets/common_widgets.dart';
 
 class RegistrationFormScreen extends StatefulWidget {
@@ -75,22 +76,25 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final rp = AppResponsive.of(context);
     final maxWidth =
         MediaQuery.of(context).size.width > 700 ? 680.0 : double.infinity;
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('무선모뎀 설치 접수'),
+        title: Text('무선모뎀 설치 접수',
+            style: TextStyle(fontSize: rp.isWide ? 18 : 16)),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: TextButton.icon(
               onPressed: () => _showContactInfo(context),
-              icon: const Icon(Icons.help_outline_rounded,
-                  size: 16, color: AppTheme.primary),
-              label: const Text('문의',
-                  style:
-                      TextStyle(color: AppTheme.primary, fontSize: 13)),
+              icon: Icon(Icons.help_outline_rounded,
+                  size: rp.isWide ? 20 : 16, color: AppTheme.primary),
+              label: Text('문의',
+                  style: TextStyle(
+                      color: AppTheme.primary,
+                      fontSize: rp.isWide ? 15 : 13)),
             ),
           ),
         ],
@@ -101,13 +105,16 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
             constraints: BoxConstraints(maxWidth: maxWidth),
             child: Column(
               children: [
-                _buildStepIndicator(),
+                _buildStepIndicator(rp),
                 Expanded(
                   child: Form(
                     key: _formKey,
                     child: SingleChildScrollView(
-                      padding:
-                          const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                      padding: EdgeInsets.fromLTRB(
+                          rp.isWide ? 24 : 16,
+                          rp.isWide ? 16 : 8,
+                          rp.isWide ? 24 : 16,
+                          100),
                       child: _buildCurrentStep(),
                     ),
                   ),
@@ -122,14 +129,15 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
   }
 
   // ── 스텝 인디케이터 ─────────────────────────────────────────────────────────
-  Widget _buildStepIndicator() {
+  Widget _buildStepIndicator(AppResponsive rp) {
     return Container(
       color: AppTheme.surface,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: EdgeInsets.fromLTRB(16, rp.isWide ? 16 : 12, 16, rp.isWide ? 16 : 12),
       child: Row(
         children: List.generate(_steps.length, (i) {
           final isActive = i == _currentStep;
           final isDone = i < _currentStep;
+          final circleSize = rp.isWide ? (isActive ? 36.0 : 30.0) : (isActive ? 28.0 : 24.0);
           return Expanded(
             child: Row(
               children: [
@@ -141,8 +149,8 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
                         children: [
                           AnimatedContainer(
                             duration: const Duration(milliseconds: 250),
-                            width: isActive ? 28 : 24,
-                            height: isActive ? 28 : 24,
+                            width: circleSize,
+                            height: circleSize,
                             decoration: BoxDecoration(
                               color: isDone
                                   ? AppTheme.primary
@@ -153,11 +161,11 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
                             ),
                             child: Center(
                               child: isDone
-                                  ? const Icon(Icons.check,
-                                      size: 14, color: Colors.white)
+                                  ? Icon(Icons.check,
+                                      size: rp.isWide ? 18 : 14, color: Colors.white)
                                   : Text('${i + 1}',
                                       style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: rp.isWide ? 15 : 12,
                                           fontWeight: FontWeight.w700,
                                           color: isActive
                                               ? Colors.white
@@ -166,10 +174,10 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: rp.isWide ? 6 : 4),
                       Text(_steps[i],
                           style: TextStyle(
-                              fontSize: 10,
+                              fontSize: rp.isWide ? 13 : 10,
                               fontWeight: isActive
                                   ? FontWeight.w700
                                   : FontWeight.w400,
@@ -183,7 +191,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
                   Expanded(
                     child: Container(
                       height: 2,
-                      margin: const EdgeInsets.only(bottom: 18),
+                      margin: EdgeInsets.only(bottom: rp.isWide ? 24 : 18),
                       color: i < _currentStep
                           ? AppTheme.primary
                           : AppTheme.border,

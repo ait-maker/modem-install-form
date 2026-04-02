@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/installation_request.dart';
 import '../services/data_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_responsive.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -251,9 +252,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.5,
+        mainAxisSpacing: AppResponsive.of(context).isWide ? 12 : 10,
+        crossAxisSpacing: AppResponsive.of(context).isWide ? 12 : 10,
+        childAspectRatio: AppResponsive.of(context).isWide ? 1.8 : 1.5,
       ),
       itemCount: items.length,
       itemBuilder: (_, i) {
@@ -294,15 +295,16 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(6),
+                      padding: EdgeInsets.all(AppResponsive.of(context).isWide ? 8 : 6),
                       decoration: BoxDecoration(
                         color: d.color.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(d.icon, size: 16, color: d.color),
+                      child: Icon(d.icon,
+                          size: AppResponsive.of(context).isWide ? 20 : 16,
+                          color: d.color),
                     ),
                     const Spacer(),
-                    // 탭 가능한 카드에만 chevron 표시
                     if (tappable)
                       Icon(Icons.chevron_right_rounded,
                           size: 14, color: d.color.withValues(alpha: 0.7)),
@@ -313,9 +315,13 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   children: [
                     Text(d.value,
                       style: TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.w800, color: d.color)),
+                        fontSize: AppResponsive.of(context).kpiValueFont,
+                        fontWeight: FontWeight.w800,
+                        color: d.color)),
                     Text(d.label,
-                      style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                      style: TextStyle(
+                        fontSize: AppResponsive.of(context).kpiLabelFont,
+                        color: AppTheme.textSecondary)),
                   ],
                 ),
               ],

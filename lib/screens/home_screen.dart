@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/data_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_responsive.dart';
 import 'registration_form_screen.dart';
 import 'dashboard_screen.dart';
 import 'statistics_screen.dart';
@@ -15,12 +16,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-
-  // 관리현황·통계 탭 잠금 상태 (앱 세션 동안 유지)
   bool _isUnlocked = false;
 
   @override
   Widget build(BuildContext context) {
+    final rp = AppResponsive.of(context);
     return Scaffold(
       body: _buildBody(),
       bottomNavigationBar: NavigationBar(
@@ -29,20 +29,24 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: AppTheme.surface,
         indicatorColor: AppTheme.primaryLighter,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        destinations: const [
+        height: rp.bottomNavHeight,
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded, color: AppTheme.primary),
+            icon: Icon(Icons.home_outlined, size: rp.bottomNavIconSz),
+            selectedIcon: Icon(Icons.home_rounded,
+                size: rp.bottomNavIconSz, color: AppTheme.primary),
             label: '홈',
           ),
           NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard_rounded, color: AppTheme.primary),
+            icon: Icon(Icons.dashboard_outlined, size: rp.bottomNavIconSz),
+            selectedIcon: Icon(Icons.dashboard_rounded,
+                size: rp.bottomNavIconSz, color: AppTheme.primary),
             label: '관리 현황',
           ),
           NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart_rounded, color: AppTheme.primary),
+            icon: Icon(Icons.bar_chart_outlined, size: rp.bottomNavIconSz),
+            selectedIcon: Icon(Icons.bar_chart_rounded,
+                size: rp.bottomNavIconSz, color: AppTheme.primary),
             label: '통계',
           ),
         ],
@@ -50,15 +54,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _onTabSelected(int index) {
-    setState(() => _currentIndex = index);
-  }
+  void _onTabSelected(int index) => setState(() => _currentIndex = index);
 
   Widget _buildBody() {
-    // 홈 탭
     if (_currentIndex == 0) return const _HomeTab();
-
-    // 관리현황 탭 — PIN 인증 필요
     if (_currentIndex == 1) {
       if (!_isUnlocked) {
         return PinLockScreen(
@@ -68,20 +67,18 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       return const DashboardScreen();
     }
-
-    // 통계 탭 — PIN 없이 바로 접근
     return const StatisticsScreen();
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 홈 탭
 // ─────────────────────────────────────────────────────────────────────────────
 class _HomeTab extends StatelessWidget {
   const _HomeTab();
 
   @override
   Widget build(BuildContext context) {
+    final rp = AppResponsive.of(context);
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
@@ -91,51 +88,55 @@ class _HomeTab extends StatelessWidget {
             final total     = service.requests.length;
             final completed = stats['설치완료'] ?? 0;
             final onHold    = stats['설치보류'] ?? 0;
-            final active    = total
-                - completed
-                - onHold
-                - (stats['접수취소'] ?? 0);
+            final active    = total - completed - onHold - (stats['접수취소'] ?? 0);
 
             return SingleChildScrollView(
               child: Column(
                 children: [
-                  _buildHeader(context),
-                  const SizedBox(height: 20),
+                  _buildHeader(context, rp),
+                  SizedBox(height: rp.spaceLg),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: rp.paddingH,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (total > 0) ...[
-                          const Text('전체 현황',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
-                                color: AppTheme.textPrimary)),
-                          const SizedBox(height: 12),
+                          Text('전체 현황',
+                            style: TextStyle(
+                              fontSize: rp.fontLg,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                            )),
+                          SizedBox(height: rp.spaceMd),
                           Row(
                             children: [
                               Expanded(child: _MiniStatCard(
                                 label: '전체 접수', count: total,
-                                color: AppTheme.secondary, icon: Icons.list_alt_rounded)),
-                              const SizedBox(width: 8),
+                                color: AppTheme.secondary,
+                                icon: Icons.list_alt_rounded, rp: rp)),
+                              SizedBox(width: rp.spaceSm),
                               Expanded(child: _MiniStatCard(
                                 label: '진행 중', count: active,
-                                color: const Color(0xFF0284C7), icon: Icons.pending_actions_rounded)),
-                              const SizedBox(width: 8),
+                                color: const Color(0xFF0284C7),
+                                icon: Icons.pending_actions_rounded, rp: rp)),
+                              SizedBox(width: rp.spaceSm),
                               Expanded(child: _MiniStatCard(
                                 label: '설치 완료', count: completed,
-                                color: AppTheme.primary, icon: Icons.check_circle_rounded)),
-                              const SizedBox(width: 8),
+                                color: AppTheme.primary,
+                                icon: Icons.check_circle_rounded, rp: rp)),
+                              SizedBox(width: rp.spaceSm),
                               Expanded(child: _MiniStatCard(
                                 label: '설치 보류', count: onHold,
-                                color: const Color(0xFFEA580C), icon: Icons.pause_circle_outline_rounded)),
+                                color: const Color(0xFFEA580C),
+                                icon: Icons.pause_circle_outline_rounded, rp: rp)),
                             ],
                           ),
-                          const SizedBox(height: 20),
+                          SizedBox(height: rp.spaceLg),
                         ],
-                        _buildRegisterCard(context),
-                        const SizedBox(height: 16),
-                        _buildGuideSection(),
-                        const SizedBox(height: 24),
+                        _buildRegisterCard(context, rp),
+                        SizedBox(height: rp.spaceMd),
+                        _buildGuideSection(rp),
+                        SizedBox(height: rp.spaceXl),
                       ],
                     ),
                   ),
@@ -148,10 +149,11 @@ class _HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, AppResponsive rp) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+      padding: EdgeInsets.fromLTRB(
+        rp.headerPadH, rp.headerPadTop, rp.headerPadH, rp.headerPadBottom),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF059669), Color(0xFF0EA5E9)],
@@ -163,36 +165,51 @@ class _HomeTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: rp.isWide ? 14 : 10,
+              vertical: rp.isWide ? 6 : 4,
+            ),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text('한국지역난방공사',
-              style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
+            child: Text('한국지역난방공사',
+              style: TextStyle(
+                fontSize: rp.fontSm,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              )),
           ),
-          const SizedBox(height: 12),
-          const Text('무선모뎀\n신규설치 접수',
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
-                color: Colors.white, height: 1.3)),
-          const SizedBox(height: 8),
+          SizedBox(height: rp.spaceMd),
+          Text('무선모뎀\n신규설치 접수',
+            style: TextStyle(
+              fontSize: rp.fontHero,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              height: 1.3,
+            )),
+          SizedBox(height: rp.spaceSm),
           Text('열량계 무선검침 사업\n새로운 사이트 설치를 신청해주세요',
-            style: TextStyle(fontSize: 13,
-                color: Colors.white.withValues(alpha: 0.9), height: 1.5)),
+            style: TextStyle(
+              fontSize: rp.fontMd,
+              color: Colors.white.withValues(alpha: 0.9),
+              height: 1.5,
+            )),
         ],
       ),
     );
   }
 
-  Widget _buildRegisterCard(BuildContext context) {
+  Widget _buildRegisterCard(BuildContext context, AppResponsive rp) {
+    final iconBoxSize = rp.isWide ? 64.0 : 52.0;
     return GestureDetector(
       onTap: () => Navigator.push(context,
         MaterialPageRoute(builder: (_) => const RegistrationFormScreen())),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: rp.paddingCard,
         decoration: BoxDecoration(
           color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(rp.cardRadius),
           border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
           boxShadow: [BoxShadow(
             color: AppTheme.primary.withValues(alpha: 0.08),
@@ -201,87 +218,101 @@ class _HomeTab extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 52, height: 52,
+              width: iconBoxSize, height: iconBoxSize,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [AppTheme.primary, Color(0xFF0EA5E9)],
                   begin: Alignment.topLeft, end: Alignment.bottomRight),
-                borderRadius: BorderRadius.circular(14)),
-              child: const Icon(Icons.add_circle_outline_rounded,
-                  size: 26, color: Colors.white),
+                borderRadius: BorderRadius.circular(rp.isWide ? 18 : 14)),
+              child: Icon(Icons.add_circle_outline_rounded,
+                  size: rp.iconLg, color: Colors.white),
             ),
-            const SizedBox(width: 16),
-            const Expanded(
+            SizedBox(width: rp.spaceMd),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('신규 설치 접수 신청',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary)),
-                  SizedBox(height: 3),
+                    style: TextStyle(
+                      fontSize: rp.fontXl,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                    )),
+                  SizedBox(height: rp.isWide ? 6 : 3),
                   Text('4단계 입력으로 간편하게 신청하세요',
-                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                    style: TextStyle(
+                      fontSize: rp.fontMd,
+                      color: AppTheme.textSecondary,
+                    )),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios_rounded,
-                size: 14, color: AppTheme.textHint),
+            Icon(Icons.arrow_forward_ios_rounded,
+                size: rp.iconSm, color: AppTheme.textHint),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildGuideSection() {
+  Widget _buildGuideSection(AppResponsive rp) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('진행 절차',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary)),
-        const SizedBox(height: 12),
+        Text('진행 절차',
+          style: TextStyle(
+            fontSize: rp.fontLg,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textPrimary,
+          )),
+        SizedBox(height: rp.spaceMd),
         ...[
-          ('01', '접수 신청',   '지사 선택 후 설치 정보를 입력합니다',        Icons.edit_note_rounded),
-          ('02', 'KT 중계기 확인', '건물 내 KT 중계기 설치 여부를 확인합니다', Icons.router_rounded),
-          ('03', '설치 일정 조율', '담당 엔지니어가 설치 일정을 연락드립니다', Icons.event_available_rounded),
-          ('04', '설치 완료',  '현장 설치 완료 후 관리자가 완료 처리합니다', Icons.check_circle_rounded),
+          ('01', '접수 신청',      '지사 선택 후 설치 정보를 입력합니다',         Icons.edit_note_rounded),
+          ('02', 'KT 중계기 확인', '건물 내 KT 중계기 설치 여부를 확인합니다',   Icons.router_rounded),
+          ('03', '설치 일정 조율', '담당 엔지니어가 설치 일정을 연락드립니다',   Icons.event_available_rounded),
+          ('04', '설치 완료',      '현장 설치 완료 후 관리자가 완료 처리합니다', Icons.check_circle_rounded),
         ].asMap().entries.map((entry) {
           final i = entry.key;
           final item = entry.value;
+          final iconBoxSz = rp.isWide ? 42.0 : 32.0;
           return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(14),
+            margin: EdgeInsets.only(bottom: rp.spaceSm),
+            padding: rp.paddingCard,
             decoration: BoxDecoration(
               color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(rp.cardRadius),
               border: Border.all(color: AppTheme.border),
             ),
             child: Row(
               children: [
                 Container(
-                  width: 32, height: 32,
+                  width: iconBoxSz, height: iconBoxSz,
                   decoration: BoxDecoration(
                     color: i == 3 ? AppTheme.primaryLighter : AppTheme.background,
-                    borderRadius: BorderRadius.circular(8)),
-                  child: Icon(item.$4, size: 16,
+                    borderRadius: BorderRadius.circular(rp.borderRadius)),
+                  child: Icon(item.$4, size: rp.iconMd,
                     color: i == 3 ? AppTheme.primary : AppTheme.textSecondary),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: rp.spaceMd),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(children: [
-                        Text(item.$1, style: const TextStyle(
-                          fontSize: 10, fontWeight: FontWeight.w700,
+                        Text(item.$1, style: TextStyle(
+                          fontSize: rp.fontXs,
+                          fontWeight: FontWeight.w700,
                           color: AppTheme.primary)),
-                        const SizedBox(width: 6),
-                        Text(item.$2, style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600,
+                        SizedBox(width: rp.spaceSm),
+                        Text(item.$2, style: TextStyle(
+                          fontSize: rp.fontMd,
+                          fontWeight: FontWeight.w600,
                           color: AppTheme.textPrimary)),
                       ]),
-                      Text(item.$3, style: const TextStyle(
-                        fontSize: 11, color: AppTheme.textSecondary)),
+                      SizedBox(height: rp.isWide ? 4 : 2),
+                      Text(item.$3, style: TextStyle(
+                        fontSize: rp.fontSm,
+                        color: AppTheme.textSecondary)),
                     ],
                   ),
                 ),
@@ -289,21 +320,25 @@ class _HomeTab extends StatelessWidget {
             ),
           );
         }),
-        const SizedBox(height: 16),
+        SizedBox(height: rp.spaceMd),
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: rp.paddingCard,
           decoration: BoxDecoration(
             color: const Color(0xFFF0FDF4),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(rp.cardRadius),
             border: Border.all(color: AppTheme.primaryLight),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.primary),
-              SizedBox(width: 10),
+              Icon(Icons.info_outline_rounded,
+                  size: rp.iconSm + 2, color: AppTheme.primary),
+              SizedBox(width: rp.spaceMd),
               Expanded(
                 child: Text('설치 접수 문의: 무선검침 담당팀',
-                  style: TextStyle(fontSize: 12, color: AppTheme.primaryDark)),
+                  style: TextStyle(
+                    fontSize: rp.fontMd,
+                    color: AppTheme.primaryDark,
+                  )),
               ),
             ],
           ),
@@ -314,37 +349,44 @@ class _HomeTab extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 미니 통계 카드
-// ─────────────────────────────────────────────────────────────────────────────
 class _MiniStatCard extends StatelessWidget {
   final String label;
   final int count;
   final Color color;
   final IconData icon;
+  final AppResponsive rp;
 
   const _MiniStatCard({
     required this.label, required this.count,
     required this.color, required this.icon,
+    required this.rp,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(rp.kpiPad),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        borderRadius: BorderRadius.circular(rp.kpiRadius),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(height: 6),
+          Icon(icon, size: rp.iconMd, color: color),
+          SizedBox(height: rp.spaceSm),
           Text('$count',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: color)),
+            style: TextStyle(
+              fontSize: rp.kpiValueFont,
+              fontWeight: FontWeight.w800,
+              color: color,
+            )),
           Text(label,
-            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+            style: TextStyle(
+              fontSize: rp.kpiLabelFont,
+              color: AppTheme.textSecondary,
+            )),
         ],
       ),
     );

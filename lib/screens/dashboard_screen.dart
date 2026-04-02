@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/installation_request.dart';
 import '../services/data_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_responsive.dart';
 import '../widgets/common_widgets.dart';
 import 'detail_screen.dart';
 import '../services/web_download.dart';
@@ -94,23 +95,25 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   // ── 필터 바 ───────────────────────────────────────────────────────────────────
   Widget _buildFilterBar(DataService service) {
+    final rp = AppResponsive.of(context);
     return Container(
       color: AppTheme.surface,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      padding: EdgeInsets.fromLTRB(12, rp.isWide ? 10 : 8, 12, rp.isWide ? 10 : 8),
       child: Column(
         children: [
           SizedBox(
-            height: 40,
+            height: rp.isWide ? 48 : 40,
             child: TextField(
               onChanged: (v) => setState(() => _searchQuery = v),
-              style: const TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: rp.inputFontSize),
               decoration: InputDecoration(
                 hintText: '건물번호, 주소, 열량계번호, 담당자 검색',
-                hintStyle: const TextStyle(fontSize: 12),
-                prefixIcon: const Icon(Icons.search_rounded,
-                    size: 18, color: AppTheme.textHint),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                hintStyle: TextStyle(fontSize: rp.isWide ? 13 : 12),
+                prefixIcon: Icon(Icons.search_rounded,
+                    size: rp.isWide ? 22 : 18, color: AppTheme.textHint),
+                contentPadding: EdgeInsets.symmetric(
+                    horizontal: rp.isWide ? 16 : 12,
+                    vertical: rp.isWide ? 12 : 8),
                 isDense: true,
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
@@ -124,9 +127,9 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: rp.isWide ? 10 : 8),
           SizedBox(
-            height: 32,
+            height: rp.isWide ? 38 : 32,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: ['전체', ...branchList].map((branch) {
@@ -139,8 +142,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.only(right: 6),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: rp.isWide ? 16 : 12,
+                        vertical: rp.isWide ? 8 : 6),
                     decoration: BoxDecoration(
                       color: isSelected ? AppTheme.primary : AppTheme.background,
                       borderRadius: BorderRadius.circular(16),
@@ -150,7 +154,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     child: Text(
                       '$branch ($count)',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: rp.isWide ? 13 : 11,
                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
                         color: isSelected ? Colors.white : AppTheme.textSecondary,
                       ),
@@ -380,19 +384,17 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   // ── 기간 통계 카드 ──────────────────────────────────────────────────────────
   Widget _buildPeriodStatCards(Map<String, int> stats) {
+    final rp = AppResponsive.of(context);
     final total    = stats['전체'] ?? 0;
     final complete = stats['설치완료'] ?? 0;
     final onHold   = stats['설치보류'] ?? 0;
-    final active   = total
-        - complete
-        - onHold
-        - (stats['접수취소'] ?? 0);
+    final active   = total - complete - onHold - (stats['접수취소'] ?? 0);
 
     return GridView.count(
-      crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-      childAspectRatio: MediaQuery.of(context).size.width > 600 ? 1.6 : 1.3,
+      crossAxisCount: rp.isWide ? 4 : 2,
+      mainAxisSpacing: rp.isWide ? 10 : 8,
+      crossAxisSpacing: rp.isWide ? 10 : 8,
+      childAspectRatio: rp.isWide ? 1.8 : 1.3,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
@@ -720,12 +722,14 @@ class _DashboardScreenState extends State<DashboardScreen>
         context,
         MaterialPageRoute(builder: (_) => DetailScreen(request: req)),
       ).then((_) => setState(() {})),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
+      child: Builder(builder: (context) {
+        final rp = AppResponsive.of(context);
+        return Container(
+        margin: EdgeInsets.only(bottom: rp.isWide ? 12 : 10),
+        padding: EdgeInsets.all(rp.isWide ? 18 : 14),
         decoration: BoxDecoration(
           color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(rp.cardRadius),
           border: Border.all(color: AppTheme.border),
           boxShadow: [
             BoxShadow(
@@ -739,23 +743,24 @@ class _DashboardScreenState extends State<DashboardScreen>
             Row(
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: rp.isWide ? 12 : 10,
+                      vertical: rp.isWide ? 6 : 4),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryLighter,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(req.branch,
-                      style: const TextStyle(
-                          fontSize: 11,
+                      style: TextStyle(
+                          fontSize: rp.isWide ? 13 : 11,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.primaryDark)),
                 ),
                 const Spacer(),
-                StatusBadge(status: req.status, small: true),
+                StatusBadge(status: req.status, small: !rp.isWide),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: rp.isWide ? 12 : 10),
             Row(
               children: [
                 Expanded(
@@ -763,30 +768,30 @@ class _DashboardScreenState extends State<DashboardScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(req.address,
-                          style: const TextStyle(
-                              fontSize: 13,
+                          style: TextStyle(
+                              fontSize: rp.fontMd,
                               fontWeight: FontWeight.w600,
                               color: AppTheme.textPrimary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 4),
+                      SizedBox(height: rp.isWide ? 6 : 4),
                       Row(
                         children: [
-                          const Icon(Icons.numbers_rounded,
-                              size: 12, color: AppTheme.textSecondary),
+                          Icon(Icons.numbers_rounded,
+                              size: rp.isWide ? 14 : 12, color: AppTheme.textSecondary),
                           const SizedBox(width: 3),
                           Text('건물 ${req.buildingNumber}',
-                              style: const TextStyle(
-                                  fontSize: 12,
+                              style: TextStyle(
+                                  fontSize: rp.fontSm,
                                   color: AppTheme.textSecondary)),
                           const SizedBox(width: 10),
-                          const Icon(Icons.memory_rounded,
-                              size: 12, color: AppTheme.textSecondary),
+                          Icon(Icons.memory_rounded,
+                              size: rp.isWide ? 14 : 12, color: AppTheme.textSecondary),
                           const SizedBox(width: 3),
                           Expanded(
                             child: Text(req.masterMeterNumber,
-                                style: const TextStyle(
-                                    fontSize: 12,
+                                style: TextStyle(
+                                    fontSize: rp.fontSm,
                                     color: AppTheme.textSecondary),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),
@@ -798,31 +803,31 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: rp.isWide ? 10 : 8),
             const Divider(height: 1),
-            const SizedBox(height: 8),
+            SizedBox(height: rp.isWide ? 10 : 8),
             Row(
               children: [
-                const Icon(Icons.person_outline_rounded,
-                    size: 13, color: AppTheme.textHint),
+                Icon(Icons.person_outline_rounded,
+                    size: rp.isWide ? 15 : 13, color: AppTheme.textHint),
                 const SizedBox(width: 4),
                 Text(req.managerName,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppTheme.textSecondary)),
+                    style: TextStyle(
+                        fontSize: rp.fontSm, color: AppTheme.textSecondary)),
                 const SizedBox(width: 10),
-                const Icon(Icons.calendar_today_outlined,
-                    size: 13, color: AppTheme.textHint),
+                Icon(Icons.calendar_today_outlined,
+                    size: rp.isWide ? 15 : 13, color: AppTheme.textHint),
                 const SizedBox(width: 4),
                 Text(
                   req.availableDate != null
                       ? DateFormat('MM/dd 이후').format(req.availableDate!)
                       : '날짜 미정',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppTheme.textSecondary)),
+                  style: TextStyle(
+                      fontSize: rp.fontSm, color: AppTheme.textSecondary)),
                 const Spacer(),
                 Text(DateFormat('MM.dd HH:mm').format(req.createdAt),
-                    style: const TextStyle(
-                        fontSize: 11, color: AppTheme.textHint)),
+                    style: TextStyle(
+                        fontSize: rp.isWide ? 12 : 11, color: AppTheme.textHint)),
               ],
             ),
             // 보류 사유 배지 표시
@@ -931,9 +936,10 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
           ],
         ),
-      ),
-    ),   // GestureDetector
-    );   // Dismissible
+      );   // Container
+      }),  // Builder
+    ),     // GestureDetector
+    );     // Dismissible
   }
 
   // ── 완료 처리 다이얼로그 ──────────────────────────────────────────────────────
