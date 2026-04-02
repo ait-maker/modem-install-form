@@ -370,23 +370,44 @@ class _MiniStatCard extends StatelessWidget {
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(rp.kpiRadius),
         border: Border.all(color: color.withValues(alpha: 0.25)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.08),
+            blurRadius: rp.isWide ? 10 : 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: rp.iconMd, color: color),
+          Container(
+            padding: EdgeInsets.all(rp.isWide ? 8 : 6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(rp.isWide ? 10 : 8),
+            ),
+            child: Icon(icon, size: rp.kpiIconSz, color: color),
+          ),
           SizedBox(height: rp.spaceSm),
           Text('$count',
             style: TextStyle(
               fontSize: rp.kpiValueFont,
               fontWeight: FontWeight.w800,
               color: color,
+              height: 1.1,
             )),
+          SizedBox(height: rp.isWide ? 3 : 2),
           Text(label,
             style: TextStyle(
               fontSize: rp.kpiLabelFont,
+              fontWeight: FontWeight.w500,
               color: AppTheme.textSecondary,
-            )),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );

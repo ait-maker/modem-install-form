@@ -226,6 +226,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   // ── 월별/주별 토글 + 기간 이동 버튼 ─────────────────────────────────────────
   Widget _buildPeriodToggle() {
     final isMonthly = _periodMode == _PeriodMode.monthly;
+    final rp = AppResponsive.of(context);
 
     // 현재 기간 레이블
     String periodLabel;
@@ -262,7 +263,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     child: Center(
                       child: Text('월별',
                         style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700,
+                          fontSize: rp.fontMd, fontWeight: FontWeight.w700,
                           color: isMonthly ? Colors.white : AppTheme.textSecondary,
                         )),
                     ),
@@ -283,7 +284,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     child: Center(
                       child: Text('주별',
                         style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700,
+                          fontSize: rp.fontMd, fontWeight: FontWeight.w700,
                           color: !isMonthly ? Colors.white : AppTheme.textSecondary,
                         )),
                     ),
@@ -310,8 +311,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Column(
                   children: [
                     Text(periodLabel,
-                      style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w700,
+                      style: TextStyle(
+                        fontSize: rp.fontLg, fontWeight: FontWeight.w700,
                         color: AppTheme.textPrimary)),
                     if (_isCurrentPeriod())
                       Container(
@@ -321,8 +322,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                           color: AppTheme.primaryLighter,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Text('현재',
-                          style: TextStyle(fontSize: 10,
+                        child: Text('현재',
+                          style: TextStyle(fontSize: rp.fontXs,
                               color: AppTheme.primary, fontWeight: FontWeight.w600)),
                       ),
                   ],
@@ -506,13 +507,15 @@ class _DashboardScreenState extends State<DashboardScreen>
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
+              child: Builder(builder: (ctx) {
+                final rp = AppResponsive.of(ctx);
+                return Row(
                 children: [
                   SizedBox(
-                    width: 82,
+                    width: rp.isWide ? 100 : 82,
                     child: Text(entry.key,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppTheme.textSecondary)),
+                        style: TextStyle(
+                            fontSize: rp.fontSm, color: AppTheme.textSecondary)),
                   ),
                   Expanded(
                     child: ClipRRect(
@@ -553,12 +556,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                   const SizedBox(width: 8),
                   Text('$total건',
-                      style: const TextStyle(
-                          fontSize: 11,
+                      style: TextStyle(
+                          fontSize: rp.fontSm,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.textPrimary)),
                 ],
-              ),
+              );
+              }),
             );
           }).toList(),
           const SizedBox(height: 8),
@@ -575,17 +579,18 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _legendItem(Color color, String label) {
+    final rp = AppResponsive.of(context);
     return Row(
       children: [
         Container(
-            width: 12,
-            height: 12,
+            width: rp.isWide ? 14 : 12,
+            height: rp.isWide ? 14 : 12,
             decoration: BoxDecoration(
                 color: color, borderRadius: BorderRadius.circular(2))),
         const SizedBox(width: 4),
         Text(label,
-            style: const TextStyle(
-                fontSize: 11, color: AppTheme.textSecondary)),
+            style: TextStyle(
+                fontSize: rp.fontSm, color: AppTheme.textSecondary)),
       ],
     );
   }
@@ -600,14 +605,15 @@ class _DashboardScreenState extends State<DashboardScreen>
         icon: Icons.inbox_rounded,
       );
     }
+    final rp = AppResponsive.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Text('접수 내역 (${items.length}건)',
-              style: const TextStyle(
-                  fontSize: 14,
+              style: TextStyle(
+                  fontSize: rp.fontLg,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary)),
         ),
@@ -625,7 +631,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       confirmDismiss: (_) async {
         return await showDialog<bool>(
           context: context,
-          builder: (_) => AlertDialog(
+          builder: (dialogContext) {
+            final rp = AppResponsive.of(dialogContext);
+            return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: const Row(children: [
               Icon(Icons.delete_outline_rounded, color: AppTheme.error),
@@ -648,29 +656,29 @@ class _DashboardScreenState extends State<DashboardScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(req.address,
-                          style: const TextStyle(
-                              fontSize: 13,
+                          style: TextStyle(
+                              fontSize: rp.fontMd,
                               fontWeight: FontWeight.w700,
                               color: AppTheme.textPrimary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 3),
+                      SizedBox(height: 3),
                       Text('${req.branch} · 건물번호 ${req.buildingNumber}',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppTheme.textSecondary)),
+                          style: TextStyle(
+                              fontSize: rp.fontSm, color: AppTheme.textSecondary)),
                     ],
                   ),
                 ),
                 const SizedBox(height: 14),
                 const Text(
                   '삭제하면 복구할 수 없습니다.\n정말 삭제하시겠습니까?',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.5),
+                  style: TextStyle(fontSize: 14, color: AppTheme.textSecondary, height: 1.5),
                 ),
               ],
             ),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(context, false),
+                  onPressed: () => Navigator.pop(dialogContext, false),
                   child: const Text('취소')),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -679,11 +687,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: () => Navigator.pop(dialogContext, true),
                 child: const Text('삭제', style: TextStyle(color: Colors.white)),
               ),
             ],
-          ),
+          );
+          },
         ) ?? false;
       },
       onDismissed: (_) async {
@@ -713,7 +722,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           children: [
             Icon(Icons.delete_outline_rounded, color: Colors.white, size: 24),
             SizedBox(height: 4),
-            Text('삭제', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+            Text('삭제', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
           ],
         ),
       ),
@@ -847,14 +856,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.pause_circle_outline_rounded,
-                          size: 13, color: Color(0xFFEA580C)),
+                      Icon(Icons.pause_circle_outline_rounded,
+                          size: rp.isWide ? 16 : 13, color: Color(0xFFEA580C)),
                       const SizedBox(width: 6),
-                      Text('보류 사유: ${req.holdReason}',
-                          style: const TextStyle(
-                              fontSize: 11,
+                      Expanded(child: Text('보류 사유: ${req.holdReason}',
+                          style: TextStyle(
+                              fontSize: rp.fontSm,
                               color: Color(0xFFEA580C),
-                              fontWeight: FontWeight.w600)),
+                              fontWeight: FontWeight.w600))),
                     ],
                   ),
                 ),
