@@ -10,7 +10,7 @@ class AppResponsive {
 
   factory AppResponsive.of(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
-    return AppResponsive._(isWide: w >= 600, width: w);
+    return AppResponsive._(isWide: w >= 360, width: w);
   }
 
   // ── 스케일 팩터 ──────────────────────────────────────
