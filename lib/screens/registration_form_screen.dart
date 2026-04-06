@@ -77,8 +77,6 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
   @override
   Widget build(BuildContext context) {
     final rp = AppResponsive.of(context);
-    final maxWidth =
-        MediaQuery.of(context).size.width > 700 ? 680.0 : double.infinity;
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -100,28 +98,19 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
         ],
       ),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: Column(
-              children: [
-                _buildStepIndicator(rp),
-                Expanded(
-                  child: Form(
-                    key: _formKey,
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.fromLTRB(
-                          rp.isWide ? 24 : 16,
-                          rp.isWide ? 16 : 8,
-                          rp.isWide ? 24 : 16,
-                          100),
-                      child: _buildCurrentStep(),
-                    ),
-                  ),
+        child: Column(
+          children: [
+            _buildStepIndicator(rp),
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(12, 10, 12, 100),
+                  child: _buildCurrentStep(),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
       bottomNavigationBar: _buildBottomBar(),
@@ -132,7 +121,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
   Widget _buildStepIndicator(AppResponsive rp) {
     return Container(
       color: AppTheme.surface,
-      padding: EdgeInsets.fromLTRB(16, rp.isWide ? 16 : 12, 16, rp.isWide ? 16 : 12),
+      padding: EdgeInsets.fromLTRB(12, rp.isWide ? 16 : 12, 12, rp.isWide ? 16 : 12),
       child: Row(
         children: List.generate(_steps.length, (i) {
           final isActive = i == _currentStep;
@@ -1009,37 +998,65 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
 
   // ── 하단 버튼 ─────────────────────────────────────────────────────────────────
   Widget _buildBottomBar() {
+    final rp = AppResponsive.of(context);
+    final isLast = _currentStep >= _steps.length - 1;
     return Container(
       color: AppTheme.surface,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: EdgeInsets.fromLTRB(12, 12, 12, 28),
       child: SafeArea(
         top: false,
         child: Row(
           children: [
             if (_currentStep > 0)
-              Expanded(
+              SizedBox(
+                width: rp.isWide ? 110 : 88,
+                height: rp.isWide ? 64 : 58,
                 child: OutlinedButton.icon(
-                  onPressed: () =>
-                      setState(() => _currentStep--),
-                  icon: const Icon(Icons.chevron_left_rounded,
-                      size: 20),
+                  onPressed: () => setState(() => _currentStep--),
+                  icon: const Icon(Icons.chevron_left_rounded, size: 22),
                   label: const Text('이전'),
                 ),
               ),
-            if (_currentStep > 0) const SizedBox(width: 12),
+            if (_currentStep > 0) const SizedBox(width: 10),
             Expanded(
-              flex: 2,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _onNextOrSubmit,
-                child: _isSubmitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
-                    : Text(_currentStep < _steps.length - 1
-                        ? '다음 단계'
-                        : '접수 신청'),
+              child: SizedBox(
+                height: rp.isWide ? 64 : 58,
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _onNextOrSubmit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isLast
+                        ? AppTheme.primary
+                        : const Color(0xFF059669),
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    shadowColor: AppTheme.primary.withValues(alpha: 0.4),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    textStyle: TextStyle(
+                      fontSize: rp.isWide ? 18 : 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2.5))
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(isLast ? '접수 신청' : '다음 단계'),
+                            const SizedBox(width: 6),
+                            Icon(
+                              isLast
+                                  ? Icons.check_circle_outline_rounded
+                                  : Icons.arrow_forward_rounded,
+                              size: rp.isWide ? 22 : 20,
+                            ),
+                          ],
+                        ),
+                ),
               ),
             ),
           ],
