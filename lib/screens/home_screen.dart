@@ -153,7 +153,7 @@ class _HomeTab extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
-        rp.headerPadH, rp.headerPadTop, rp.headerPadH, rp.headerPadBottom),
+        rp.headerPadH, rp.isWide ? 24 : 18, rp.headerPadH, rp.isWide ? 24 : 18),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF059669), Color(0xFF0EA5E9)],
@@ -180,20 +180,20 @@ class _HomeTab extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               )),
           ),
-          SizedBox(height: rp.spaceMd),
-          Text('무선모뎀\n신규설치 접수',
+          SizedBox(height: rp.spaceSm),
+          Text('무선모뎀 신규설치 접수',
             style: TextStyle(
-              fontSize: rp.fontHero,
+              fontSize: rp.fontXxl,
               fontWeight: FontWeight.w800,
               color: Colors.white,
-              height: 1.3,
+              height: 1.2,
             )),
-          SizedBox(height: rp.spaceSm),
-          Text('열량계 무선검침 사업\n새로운 사이트 설치를 신청해주세요',
+          SizedBox(height: rp.isWide ? 6 : 4),
+          Text('열량계 무선검침 신규 설치를 신청해주세요',
             style: TextStyle(
-              fontSize: rp.fontMd,
+              fontSize: rp.fontSm,
               color: Colors.white.withValues(alpha: 0.9),
-              height: 1.5,
+              height: 1.4,
             )),
         ],
       ),
