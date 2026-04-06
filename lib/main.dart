@@ -46,6 +46,17 @@ class ModemManagerApp extends StatelessWidget {
           Locale('en', 'US'),
         ],
         locale: const Locale('ko', 'KR'),
+        // ── 전역 텍스트 스케일: 360px 이상이면 1.45배 확대 ──
+        builder: (context, child) {
+          final w = MediaQuery.of(context).size.width;
+          final scale = w >= 360 ? 1.45 : 1.0;
+          return MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(scale),
+            ),
+            child: child!,
+          );
+        },
         home: const HomeScreen(),
       ),
     );
