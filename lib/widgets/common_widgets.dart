@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_responsive.dart';
 import '../models/installation_request.dart';
 
 // ─── 섹션 헤더 ───────────────────────────────────────────────────────────────
@@ -12,25 +13,27 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rp = AppResponsive.of(context);
+    final boxSize = rp.isWide ? 44.0 : 36.0;
     return Row(
       children: [
         Container(
-          width: 36, height: 36,
+          width: boxSize, height: boxSize,
           decoration: BoxDecoration(
             color: AppTheme.primaryLighter,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(rp.isWide ? 10 : 8),
           ),
-          child: Icon(icon, size: 18, color: AppTheme.primary),
+          child: Icon(icon, size: rp.isWide ? 22 : 18, color: AppTheme.primary),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: rp.spaceSm),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(
-              fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+            Text(title, style: TextStyle(
+              fontSize: rp.fontLg, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
             if (subtitle != null)
-              Text(subtitle!, style: const TextStyle(
-                fontSize: 12, color: AppTheme.textSecondary)),
+              Text(subtitle!, style: TextStyle(
+                fontSize: rp.fontSm, color: AppTheme.textSecondary)),
           ],
         ),
       ],
@@ -46,15 +49,16 @@ class FieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rp = AppResponsive.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: EdgeInsets.only(bottom: rp.isWide ? 8 : 6),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+          Text(label, style: TextStyle(
+            fontSize: rp.fontMd, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
           if (required)
-            const Text('  *', style: TextStyle(
-              fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.error)),
+            Text('  *', style: TextStyle(
+              fontSize: rp.fontMd, fontWeight: FontWeight.w700, color: AppTheme.error)),
         ],
       ),
     );
@@ -92,6 +96,7 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rp = AppResponsive.of(context);
     return TextFormField(
       controller: controller,
       initialValue: controller == null ? initialValue : null,
@@ -102,10 +107,15 @@ class AppTextField extends StatelessWidget {
       readOnly: readOnly,
       onTap: onTap,
       onChanged: onChanged,
-      style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
+      style: TextStyle(fontSize: rp.fontMd, color: AppTheme.textPrimary),
       decoration: InputDecoration(
         hintText: hintText,
+        hintStyle: TextStyle(fontSize: rp.fontMd),
         suffixIcon: suffixIcon,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: rp.isWide ? 18 : 14,
+          vertical: rp.isWide ? 16 : 12,
+        ),
       ),
     );
   }
@@ -132,17 +142,26 @@ class AppDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rp = AppResponsive.of(context);
     return DropdownButtonFormField<T>(
       // ignore: deprecated_member_use
       value: value,
       validator: validator,
       isExpanded: true,
-      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
-      decoration: InputDecoration(hintText: hintText),
-      style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
+      icon: Icon(Icons.keyboard_arrow_down_rounded,
+          size: rp.isWide ? 24 : 20, color: AppTheme.textSecondary),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(fontSize: rp.fontMd),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: rp.isWide ? 18 : 14,
+          vertical: rp.isWide ? 16 : 12,
+        ),
+      ),
+      style: TextStyle(fontSize: rp.fontMd, color: AppTheme.textPrimary),
       items: items.map((item) => DropdownMenuItem<T>(
         value: item,
-        child: Text(itemLabel(item)),
+        child: Text(itemLabel(item), style: TextStyle(fontSize: rp.fontMd)),
       )).toList(),
       onChanged: onChanged,
     );
@@ -190,10 +209,13 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fs = small ? 11.0 : 12.0;
-    final iconSize = small ? 12.0 : 14.0;
+    final rp = AppResponsive.of(context);
+    final fs = small ? rp.fontXs : rp.fontSm;
+    final iconSize = small ? rp.fontSm : rp.fontMd;
+    final padH = small ? (rp.isWide ? 10.0 : 8.0) : (rp.isWide ? 12.0 : 10.0);
+    final padV = small ? (rp.isWide ? 4.0 : 3.0) : (rp.isWide ? 6.0 : 5.0);
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: small ? 8 : 10, vertical: small ? 3 : 5),
+      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -215,7 +237,6 @@ class StatCard extends StatelessWidget {
   final Color color;
   final IconData icon;
   final VoidCallback? onTap;
-  /// 숫자 뒤에 붙는 단위 (예: '%', '건')
   final String? suffix;
 
   const StatCard({
@@ -230,14 +251,23 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rp = AppResponsive.of(context);
+    final boxSize = rp.isWide ? 48.0 : 36.0;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: rp.paddingCard,
         decoration: BoxDecoration(
           color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(rp.cardRadius),
           border: Border.all(color: AppTheme.border),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.06),
+              blurRadius: rp.isWide ? 10 : 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -245,34 +275,35 @@ class StatCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  width: 36, height: 36,
+                  width: boxSize, height: boxSize,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(rp.isWide ? 12 : 8),
                   ),
-                  child: Icon(icon, size: 18, color: color),
+                  child: Icon(icon, size: rp.isWide ? 24 : 18, color: color),
                 ),
                 const Spacer(),
-                Icon(Icons.chevron_right_rounded, size: 16, color: color.withValues(alpha: 0.5)),
+                Icon(Icons.chevron_right_rounded,
+                    size: rp.isWide ? 20 : 16, color: color.withValues(alpha: 0.5)),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: rp.spaceMd),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text('$count', style: TextStyle(
-                  fontSize: 28, fontWeight: FontWeight.w800, color: color)),
+                  fontSize: rp.kpiValueFont, fontWeight: FontWeight.w800, color: color)),
                 if (suffix != null)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 4, left: 2),
+                    padding: EdgeInsets.only(bottom: rp.isWide ? 5 : 4, left: 2),
                     child: Text(suffix!, style: TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+                      fontSize: rp.fontMd, fontWeight: FontWeight.w700, color: color)),
                   ),
               ],
             ),
-            const SizedBox(height: 2),
-            Text(label, style: const TextStyle(
-              fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
+            SizedBox(height: rp.isWide ? 4 : 2),
+            Text(label, style: TextStyle(
+              fontSize: rp.kpiLabelFont, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -290,19 +321,20 @@ class InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rp = AppResponsive.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: rp.isWide ? 10 : 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
-            child: Text(label, style: const TextStyle(
-              fontSize: 13, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
+            width: rp.isWide ? 150 : 120,
+            child: Text(label, style: TextStyle(
+              fontSize: rp.fontMd, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
           ),
           Expanded(
             child: Text(value, style: TextStyle(
-              fontSize: 13,
+              fontSize: rp.fontMd,
               color: highlight ? AppTheme.primary : AppTheme.textPrimary,
               fontWeight: highlight ? FontWeight.w700 : FontWeight.w500)),
           ),
@@ -321,17 +353,19 @@ class SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rp = AppResponsive.of(context);
     return Container(
       width: double.infinity,
-      padding: padding ?? const EdgeInsets.all(20),
+      padding: padding ?? EdgeInsets.all(rp.isWide ? 26 : 20),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(rp.cardRadius),
         border: Border.all(color: AppTheme.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8, offset: const Offset(0, 2)),
+            blurRadius: rp.isWide ? 12 : 8,
+            offset: const Offset(0, 2)),
         ],
       ),
       child: child,
@@ -354,25 +388,27 @@ class EmptyStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rp = AppResponsive.of(context);
+    final boxSize = rp.isWide ? 100.0 : 80.0;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 80, height: 80,
+            width: boxSize, height: boxSize,
             decoration: BoxDecoration(
               color: AppTheme.primaryLighter,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 36, color: AppTheme.primary),
+            child: Icon(icon, size: rp.isWide ? 44 : 36, color: AppTheme.primary),
           ),
-          const SizedBox(height: 16),
-          Text(message, style: const TextStyle(
-            fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+          SizedBox(height: rp.spaceMd),
+          Text(message, style: TextStyle(
+            fontSize: rp.fontLg, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
           if (subMessage != null) ...[
-            const SizedBox(height: 6),
+            SizedBox(height: rp.spaceSm),
             Text(subMessage!, textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              style: TextStyle(fontSize: rp.fontMd, color: AppTheme.textSecondary)),
           ],
         ],
       ),
