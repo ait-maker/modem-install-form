@@ -395,7 +395,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       crossAxisCount: rp.isWide ? 4 : 2,
       mainAxisSpacing: rp.isWide ? 10 : 8,
       crossAxisSpacing: rp.isWide ? 10 : 8,
-      childAspectRatio: rp.isWide ? 2.0 : 1.4,
+      childAspectRatio: rp.isWide ? 2.4 : 2.0,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [

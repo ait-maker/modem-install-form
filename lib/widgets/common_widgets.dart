@@ -269,44 +269,56 @@ class StatCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: boxSize, height: boxSize,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(rp.isWide ? 12 : 8),
-                  ),
-                  child: Icon(icon, size: rp.isWide ? 24 : 18, color: color),
-                ),
-                const Spacer(),
-                Icon(Icons.chevron_right_rounded,
-                    size: rp.isWide ? 20 : 16, color: color.withValues(alpha: 0.5)),
-              ],
+            // 왼쪽: 아이콘 박스
+            Container(
+              width: boxSize, height: boxSize,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(rp.isWide ? 12 : 8),
+              ),
+              child: Icon(icon, size: rp.isWide ? 24 : 18, color: color),
             ),
-            const SizedBox(height: 6),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text('$count', style: TextStyle(
-                  fontSize: rp.kpiValueFont, fontWeight: FontWeight.w800, color: color)),
-                if (suffix != null)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: rp.isWide ? 5 : 4, left: 2),
-                    child: Text(suffix!, style: TextStyle(
-                      fontSize: rp.fontMd, fontWeight: FontWeight.w700, color: color)),
+            const SizedBox(width: 10),
+            // 오른쪽: 숫자 + 라벨
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('$count', style: TextStyle(
+                        fontSize: rp.kpiValueFont,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                        height: 1.0,
+                      )),
+                      if (suffix != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2, left: 2),
+                          child: Text(suffix!, style: TextStyle(
+                            fontSize: rp.fontSm, fontWeight: FontWeight.w700, color: color)),
+                        ),
+                    ],
                   ),
-              ],
+                  const SizedBox(height: 3),
+                  Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: rp.kpiLabelFont,
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w500,
+                      height: 1.2,
+                    )),
+                ],
+              ),
             ),
-            const SizedBox(height: 4),
-            Text(label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-              fontSize: rp.kpiLabelFont, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
