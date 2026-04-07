@@ -129,7 +129,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
           SizedBox(height: rp.isWide ? 10 : 8),
           SizedBox(
-            height: rp.isWide ? 38 : 32,
+            height: rp.isWide ? 52 : 40,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: ['전체', ...branchList].map((branch) {
@@ -143,18 +143,18 @@ class _DashboardScreenState extends State<DashboardScreen>
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.only(right: 6),
                     padding: EdgeInsets.symmetric(
-                        horizontal: rp.isWide ? 16 : 12,
-                        vertical: rp.isWide ? 8 : 6),
+                        horizontal: rp.isWide ? 14 : 10,
+                        vertical: rp.isWide ? 10 : 7),
                     decoration: BoxDecoration(
                       color: isSelected ? AppTheme.primary : AppTheme.background,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                           color: isSelected ? AppTheme.primary : AppTheme.border),
                     ),
                     child: Text(
                       '$branch ($count)',
                       style: TextStyle(
-                        fontSize: rp.isWide ? 13 : 11,
+                        fontSize: rp.isWide ? 11 : 10,
                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
                         color: isSelected ? Colors.white : AppTheme.textSecondary,
                       ),
@@ -395,7 +395,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       crossAxisCount: rp.isWide ? 4 : 2,
       mainAxisSpacing: rp.isWide ? 10 : 8,
       crossAxisSpacing: rp.isWide ? 10 : 8,
-      childAspectRatio: rp.isWide ? 1.7 : 1.3,
+      childAspectRatio: rp.isWide ? 2.0 : 1.4,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
@@ -512,12 +512,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                 return Row(
                 children: [
                   SizedBox(
-                    width: rp.isWide ? 78 : 68,
+                    width: rp.isWide ? 110 : 80,
                     child: Text(entry.key,
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        overflow: TextOverflow.clip,
                         style: TextStyle(
-                            fontSize: rp.isWide ? 12.0 : 10.0,
+                            fontSize: rp.isWide ? 11.0 : 9.5,
                             color: AppTheme.textSecondary)),
                   ),
                   Expanded(

@@ -287,7 +287,7 @@ class StatCard extends StatelessWidget {
                     size: rp.isWide ? 20 : 16, color: color.withValues(alpha: 0.5)),
               ],
             ),
-            SizedBox(height: rp.spaceMd),
+            const SizedBox(height: 6),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -301,9 +301,9 @@ class StatCard extends StatelessWidget {
                   ),
               ],
             ),
-            SizedBox(height: rp.isWide ? 4 : 2),
+            const SizedBox(height: 4),
             Text(label,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
               fontSize: rp.kpiLabelFont, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),

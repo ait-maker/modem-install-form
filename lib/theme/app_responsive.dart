@@ -45,8 +45,8 @@ class AppResponsive {
 
   EdgeInsets get paddingH => EdgeInsets.symmetric(horizontal: isWide ? 32.0 : 16.0);
   EdgeInsets get paddingCard => EdgeInsets.symmetric(
-    horizontal: isWide ? 18.0 : 14.0,
-    vertical:   isWide ? 14.0 : 12.0,
+    horizontal: isWide ? 14.0 : 12.0,
+    vertical:   isWide ? 10.0 : 10.0,
   );
 
   // ── 카드/컨테이너 ─────────────────────────────────────
