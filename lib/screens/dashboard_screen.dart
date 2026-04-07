@@ -395,7 +395,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       crossAxisCount: rp.isWide ? 4 : 2,
       mainAxisSpacing: rp.isWide ? 10 : 8,
       crossAxisSpacing: rp.isWide ? 10 : 8,
-      childAspectRatio: rp.isWide ? 1.8 : 1.3,
+      childAspectRatio: rp.isWide ? 1.7 : 1.3,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
@@ -512,10 +512,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                 return Row(
                 children: [
                   SizedBox(
-                    width: rp.isWide ? 100 : 82,
+                    width: rp.isWide ? 78 : 68,
                     child: Text(entry.key,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontSize: rp.fontSm, color: AppTheme.textSecondary)),
+                            fontSize: rp.isWide ? 12.0 : 10.0,
+                            color: AppTheme.textSecondary)),
                   ),
                   Expanded(
                     child: ClipRRect(

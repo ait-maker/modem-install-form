@@ -302,7 +302,10 @@ class StatCard extends StatelessWidget {
               ],
             ),
             SizedBox(height: rp.isWide ? 4 : 2),
-            Text(label, style: TextStyle(
+            Text(label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
               fontSize: rp.kpiLabelFont, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
           ],
         ),

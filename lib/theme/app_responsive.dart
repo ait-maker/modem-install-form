@@ -45,8 +45,8 @@ class AppResponsive {
 
   EdgeInsets get paddingH => EdgeInsets.symmetric(horizontal: isWide ? 32.0 : 16.0);
   EdgeInsets get paddingCard => EdgeInsets.symmetric(
-    horizontal: isWide ? 26.0 : 14.0,
-    vertical:   isWide ? 22.0 : 12.0,
+    horizontal: isWide ? 18.0 : 14.0,
+    vertical:   isWide ? 14.0 : 12.0,
   );
 
   // ── 카드/컨테이너 ─────────────────────────────────────
@@ -76,7 +76,7 @@ class AppResponsive {
 
   // ── KPI / 통계 카드 ───────────────────────────────────
   double get kpiValueFont => isWide ? 32.0 : 20.0;   // 모바일 20 → PC 32
-  double get kpiLabelFont => isWide ? 15.0 : 11.0;   // 모바일 11 → PC 15
+  double get kpiLabelFont => isWide ? 13.0 : 11.0;   // 모바일 11 → PC 13
   double get kpiPad       => isWide ? 22.0 : 14.0;
   double get kpiRadius    => isWide ? 16.0 : 12.0;
   double get kpiIconSz    => isWide ? 28.0 : 20.0;   // KPI 전용 아이콘
