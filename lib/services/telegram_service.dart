@@ -82,16 +82,34 @@ ${req.notes != null && req.notes!.isNotEmpty ? '\n📝 <b>메모:</b> ${req.note
               'token': _botToken,
               'chat_id': _chatId,
               'text': message,
+              'parse_mode': 'HTML',
             }),
           )
           .timeout(const Duration(seconds: 10));
 
-      if (kDebugMode) {
-        debugPrint('Telegram notify: ${response.statusCode} ${response.body}');
+      // 실패 시 HTML 태그 제거 후 plain text로 재시도
+      if (response.statusCode != 200) {
+        final plainMessage = message
+            .replaceAll(RegExp(r'<[^>]+>'), '')  // HTML 태그 제거
+            .replaceAll('&amp;', '&')
+            .replaceAll('&lt;', '<')
+            .replaceAll('&gt;', '>');
+        await http
+            .post(
+              Uri.parse(_workerUrl),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'token': _botToken,
+                'chat_id': _chatId,
+                'text': plainMessage,
+              }),
+            )
+            .timeout(const Duration(seconds: 10));
       }
+      debugPrint('Telegram notify: ${response.statusCode} ${response.body}');
     } catch (e) {
       // 알림 실패는 접수에 영향 없음 — 로그만 남김
-      if (kDebugMode) debugPrint('Telegram notify error: $e');
+      debugPrint('Telegram notify error: $e');
     }
   }
 
