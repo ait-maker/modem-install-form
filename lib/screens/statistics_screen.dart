@@ -186,7 +186,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         : avgDaysMap[_selectedBranch];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -464,7 +464,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final maxTotal = stats.map((m) => m['total'] as int).reduce((a, b) => a > b ? a : b);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -669,7 +669,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final maxVal = monthly.map((m) => m['total'] as int).reduce((a, b) => a > b ? a : b);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -904,7 +904,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
-    padding: const EdgeInsets.all(14),
+    padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
       color: AppTheme.surface,
       borderRadius: BorderRadius.circular(12),
@@ -1133,7 +1133,7 @@ class _DrilldownSheet extends StatelessWidget {
 
           // ── 시트 헤더
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 12, 12),
+            padding: const EdgeInsets.fromLTRB(12, 6, 8, 8),
             child: Row(
               children: [
                 // 상태 아이콘
@@ -1201,8 +1201,8 @@ class _DrilldownSheet extends StatelessWidget {
           //    - 설치완료 건은 수정/취소 대상이 아닐 수 있으나 일관성 있게 노출
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            margin: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               color: const Color(0xFFFFF8E1),
               borderRadius: BorderRadius.circular(10),
@@ -1231,7 +1231,7 @@ class _DrilldownSheet extends StatelessWidget {
             child: items.isEmpty
                 ? _buildEmpty()
                 : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                    padding: const EdgeInsets.fromLTRB(8, 6, 8, 20),
                     itemCount: items.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) => _DrilldownCard(
@@ -1313,10 +1313,10 @@ class _DrilldownCard extends StatelessWidget {
     final sc = _statusColor(item.status);
 
     return Container(
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
         color: AppTheme.background,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppTheme.border),
       ),
       child: Column(
