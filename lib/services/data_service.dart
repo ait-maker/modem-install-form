@@ -95,27 +95,30 @@ class DataService extends ChangeNotifier {
                 e as Map<String, dynamic>))
             .toList()
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        _isLoading = false;
-        notifyListeners();
       }
-
-      // 2) Firestore에서 최신 데이터 동기화
-      await _syncFromFirestore();
     } catch (e) {
-      if (kDebugMode) debugPrint('loadRequests error: $e');
+      if (kDebugMode) debugPrint('loadRequests(local) error: $e');
     } finally {
+      // 로컬 로드 완료 즉시 UI 표시 — Firestore 동기화 완료를 기다리지 않음
       _isLoading = false;
       notifyListeners();
     }
+
+    // 2) Firestore 동기화는 UI를 블로킹하지 않고 백그라운드에서 실행
+    unawaited(_syncFromFirestore());
   }
 
-  /// Firestore에서 전체 데이터를 로컬로 동기화
+  /// Firestore에서 전체 데이터를 로컬로 동기화 (백그라운드, 10초 타임아웃)
   Future<void> _syncFromFirestore() async {
     try {
       final snapshot = await _db
           .collection(_fsCollection)
           .orderBy('createdAt', descending: true)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+        if (kDebugMode) debugPrint('_syncFromFirestore: Firestore timeout, using local data');
+        throw TimeoutException('Firestore sync timeout');
+      });
 
       if (snapshot.docs.isEmpty) {
         // Firestore가 비어있으면 로컬 데이터를 Firestore에 업로드
@@ -186,11 +189,18 @@ class DataService extends ChangeNotifier {
 
   /// 지사명으로 담당자 정보 조회 (Firestore branch_managers)
   /// 반환값: {'name': '홍길동', 'phone': '010-0000-0000'}
-  /// 담당자 미정이면 {'name': '', 'phone': ''} 반환
+  /// 담당자 미정이거나 Firestore 실패 시 {'name': '', 'phone': ''} 반환
+  /// 타임아웃: 5초 — 초과 시 즉시 빈 값 반환하여 UI 블로킹 방지
   Future<Map<String, String>> fetchBranchManager(String branch) async {
     try {
-      final doc =
-          await _db.collection(_fsBranchManagers).doc(branch).get();
+      final doc = await _db
+          .collection(_fsBranchManagers)
+          .doc(branch)
+          .get()
+          .timeout(const Duration(seconds: 5), onTimeout: () {
+        if (kDebugMode) debugPrint('fetchBranchManager: timeout for $branch');
+        throw TimeoutException('fetchBranchManager timeout');
+      });
       if (!doc.exists) return {'name': '', 'phone': ''};
       final data = doc.data()!;
       return {
@@ -199,6 +209,7 @@ class DataService extends ChangeNotifier {
       };
     } catch (e) {
       if (kDebugMode) debugPrint('fetchBranchManager error: $e');
+      // Firestore 실패/타임아웃 → 빈 값으로 즉시 반환, 사용자가 직접 입력
       return {'name': '', 'phone': ''};
     }
   }

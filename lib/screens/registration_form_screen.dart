@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -1072,17 +1073,31 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
     setState(() {
       _branch = branch;
       _isLoadingManager = true;
+      // 담당자 필드 초기화
+      _managerNameCtrl.clear();
+      _managerPhoneCtrl.clear();
     });
 
-    final service = context.read<DataService>();
-    final manager = await service.fetchBranchManager(branch);
+    try {
+      // fetchBranchManager 내부에 5초 timeout 있음
+      // 추가로 6초 안전 타임아웃: 어떤 예외든 _isLoadingManager=true가 고착되지 않도록
+      final service = context.read<DataService>();
+      final manager = await service
+          .fetchBranchManager(branch)
+          .timeout(const Duration(seconds: 6));
 
-    if (mounted) {
-      setState(() {
-        _isLoadingManager = false;
-        _managerNameCtrl.text = manager['name'] ?? '';
-        _managerPhoneCtrl.text = manager['phone'] ?? '';
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingManager = false;
+          _managerNameCtrl.text = manager['name'] ?? '';
+          _managerPhoneCtrl.text = manager['phone'] ?? '';
+        });
+      }
+    } catch (_) {
+      // Firestore 완전 실패 / 타임아웃 → 빈 값으로 즉시 입력 가능 상태로 전환
+      if (mounted) {
+        setState(() => _isLoadingManager = false);
+      }
     }
   }
 
