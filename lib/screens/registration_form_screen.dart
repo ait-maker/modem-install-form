@@ -113,7 +113,9 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomBar(),
+      // bottomNavigationBar 대신 build() 내부 rp를 직접 전달하여
+      // context 불안정 문제 방지
+      bottomNavigationBar: _buildBottomBar(rp),
     );
   }
 
@@ -997,8 +999,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
   }
 
   // ── 하단 버튼 ─────────────────────────────────────────────────────────────────
-  Widget _buildBottomBar() {
-    final rp = AppResponsive.of(context);
+  Widget _buildBottomBar(AppResponsive rp) {
     final isLast = _currentStep >= _steps.length - 1;
     return Container(
       color: AppTheme.surface,

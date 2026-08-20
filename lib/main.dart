@@ -46,13 +46,13 @@ class ModemManagerApp extends StatelessWidget {
           Locale('en', 'US'),
         ],
         locale: const Locale('ko', 'KR'),
-        // ── 전역 텍스트 스케일: 360px 이상이면 1.45배 확대 ──
+        // ── 전역 textScaler 제거: AppResponsive가 폰트 크기를 직접 제어하므로
+        // ── textScaler를 추가 적용하면 fontMd 18px * 1.45 = 26px로 폭발하여
+        // ── TextField/Dropdown 높이 overflow → 접수폼 렌더링 실패의 원인이었음
         builder: (context, child) {
-          final w = MediaQuery.of(context).size.width;
-          final scale = w >= 360 ? 1.45 : 1.0;
           return MediaQuery(
             data: MediaQuery.of(context).copyWith(
-              textScaler: TextScaler.linear(scale),
+              textScaler: TextScaler.noScaling,
             ),
             child: child!,
           );
