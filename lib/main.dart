@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -11,17 +12,26 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase 초기화 - 실패해도 앱은 계속 실행 (로컬 데이터 사용)
+  // Firebase 초기화 - 8초 타임아웃 적용
+  // 네트워크 불안정 또는 Firebase 서버 지연 시 runApp 자체가 블로킹되는 것을 방지
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
+    ).timeout(
+      const Duration(seconds: 8),
+      onTimeout: () {
+        if (kDebugMode) debugPrint('⚠️ Firebase init timeout — 오프라인 모드로 전환');
+        // timeout 시 예외를 throw하여 아래 catch에서 처리
+        throw TimeoutException('Firebase init timeout');
+      },
     );
     if (kDebugMode) debugPrint('✅ Firebase initialized');
   } catch (e) {
-    if (kDebugMode) debugPrint('⚠️ Firebase init failed (offline mode): $e');
-    // Firebase 실패해도 로컬 SharedPreferences로 동작
+    // Firebase 실패 / 타임아웃 → 로컬 SharedPreferences로 동작
+    if (kDebugMode) debugPrint('⚠️ Firebase 초기화 실패 (로컬 모드): $e');
   }
 
+  // Firebase 결과와 무관하게 항상 앱 실행
   runApp(const ModemManagerApp());
 }
 

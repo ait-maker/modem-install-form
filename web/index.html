@@ -33,6 +33,80 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- =====================================================================
+    Service Worker 안전 처리 스크립트
+    - 이전 배포의 손상된 SW 캐시가 로딩을 멈추게 하는 문제를 방지
+    - 새 배포 감지 시 SW를 강제로 업데이트하여 구버전 캐시 제거
+    ===================================================================== -->
+  <script>
+    (function() {
+      if (!('serviceWorker' in navigator)) return;
+
+      // 모든 기존 SW 캐시를 삭제하고 SW를 강제 재등록하는 함수
+      function clearAndReload() {
+        if (window._swClearInProgress) return;
+        window._swClearInProgress = true;
+        // 모든 캐시 삭제
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            return Promise.all(names.map(function(name) {
+              return caches.delete(name);
+            }));
+          }).then(function() {
+            // SW 등록 해제
+            return navigator.serviceWorker.getRegistrations();
+          }).then(function(regs) {
+            return Promise.all(regs.map(function(reg) {
+              return reg.unregister();
+            }));
+          }).then(function() {
+            // 캐시 없이 새로고침 (한 번만)
+            if (!sessionStorage.getItem('sw_cleared')) {
+              sessionStorage.setItem('sw_cleared', '1');
+              window.location.reload(true);
+            }
+          }).catch(function() {
+            // 캐시 삭제 실패해도 계속 진행
+          });
+        }
+      }
+
+      // 현재 등록된 SW 확인 및 업데이트 강제 적용
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(reg) {
+          // waiting 상태(새 버전 대기 중)인 SW가 있으면 즉시 활성화
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+          // SW 업데이트 체크 (네트워크 오류 시 무시)
+          reg.update().catch(function() {});
+        });
+      }).catch(function() {});
+
+      // SW 컨트롤러가 바뀌면(새 버전 활성화) 페이지 자동 새로고침
+      var refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
+
+      // 페이지 로딩 타임아웃 감시:
+      // flutter_bootstrap.js 로딩 후 12초 안에 Flutter 엔진이 시작되지 않으면
+      // → SW 캐시 문제로 판단하고 캐시 초기화 후 재시도
+      var flutterStarted = false;
+      window.addEventListener('flutter-first-frame', function() {
+        flutterStarted = true;
+      });
+      setTimeout(function() {
+        if (!flutterStarted && !sessionStorage.getItem('sw_cleared')) {
+          clearAndReload();
+        }
+      }, 12000);
+    })();
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
