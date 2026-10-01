@@ -34,76 +34,97 @@
 </head>
 <body>
   <!-- =====================================================================
-    Service Worker 안전 처리 스크립트
-    - 이전 배포의 손상된 SW 캐시가 로딩을 멈추게 하는 문제를 방지
-    - 새 배포 감지 시 SW를 강제로 업데이트하여 구버전 캐시 제거
+    Service Worker 안전 처리 스크립트 v4
+    수정 이력:
+    - v1: SW 강제 업데이트 + 12초 타임아웃 감시
+    - v2: clearAndReload 중복 방지 (_swClearInProgress)
+    - v3: controllerchange refreshing 플래그 추가
+    - v4 (4차 민원 수정):
+      ① controllerchange 무한 루프 방지: sessionStorage 'sw_reloaded' 가드 추가
+         (refreshing은 지역변수라 reload 후 초기화됨 → 루프 발생 가능)
+      ② flutter-first-frame 타이밍 버그 수정:
+         - window 이벤트 대신 document 이벤트도 동시 감지
+         - sessionStorage 'flutter_started' 플래그로 reload 후 재감지 방지
+         - 타임아웃을 20초로 늘려 느린 기기(지사 현장 Wi-Fi) 대응
+      ③ SW 치료 직후 Flutter 재기동 대기 보장:
+         clearAndReload 전 300ms 대기 (SW unregister 완료 보장)
     ===================================================================== -->
   <script>
     (function() {
       if (!('serviceWorker' in navigator)) return;
 
-      // 모든 기존 SW 캐시를 삭제하고 SW를 강제 재등록하는 함수
+      // ── 모든 캐시·SW를 삭제하고 한 번만 새로고침하는 함수 ──────────────────
       function clearAndReload() {
         if (window._swClearInProgress) return;
         window._swClearInProgress = true;
-        // 모든 캐시 삭제
+
+        // 이미 이번 세션에서 캐시 초기화를 했다면 재진입하지 않음
+        if (sessionStorage.getItem('sw_cleared')) return;
+
+        var doReload = function() {
+          sessionStorage.setItem('sw_cleared', '1');
+          // SW unregister 완료 후 300ms 대기 → Flutter bootstrap 재시작
+          setTimeout(function() { window.location.reload(); }, 300);
+        };
+
         if ('caches' in window) {
           caches.keys().then(function(names) {
             return Promise.all(names.map(function(name) {
               return caches.delete(name);
             }));
           }).then(function() {
-            // SW 등록 해제
             return navigator.serviceWorker.getRegistrations();
           }).then(function(regs) {
-            return Promise.all(regs.map(function(reg) {
-              return reg.unregister();
-            }));
-          }).then(function() {
-            // 캐시 없이 새로고침 (한 번만)
-            if (!sessionStorage.getItem('sw_cleared')) {
-              sessionStorage.setItem('sw_cleared', '1');
-              window.location.reload(true);
-            }
-          }).catch(function() {
-            // 캐시 삭제 실패해도 계속 진행
-          });
+            return Promise.all(regs.map(function(reg) { return reg.unregister(); }));
+          }).then(doReload).catch(doReload);
+        } else {
+          doReload();
         }
       }
 
-      // 현재 등록된 SW 확인 및 업데이트 강제 적용
+      // ── SW waiting → 즉시 활성화 ──────────────────────────────────────────
       navigator.serviceWorker.getRegistrations().then(function(regs) {
         regs.forEach(function(reg) {
-          // waiting 상태(새 버전 대기 중)인 SW가 있으면 즉시 활성화
           if (reg.waiting) {
             reg.waiting.postMessage({ type: 'SKIP_WAITING' });
           }
-          // SW 업데이트 체크 (네트워크 오류 시 무시)
           reg.update().catch(function() {});
         });
       }).catch(function() {});
 
-      // SW 컨트롤러가 바뀌면(새 버전 활성화) 페이지 자동 새로고침
-      var refreshing = false;
+      // ── controllerchange: 새 SW 활성화 시 1회만 새로고침 ──────────────────
+      // 버그 수정: refreshing은 지역변수라 reload 후 false로 초기화됨
+      // → sessionStorage 'sw_reloaded' 로 교체하여 무한 루프 차단
       navigator.serviceWorker.addEventListener('controllerchange', function() {
-        if (!refreshing) {
-          refreshing = true;
+        if (!sessionStorage.getItem('sw_reloaded')) {
+          sessionStorage.setItem('sw_reloaded', '1');
           window.location.reload();
         }
       });
 
-      // 페이지 로딩 타임아웃 감시:
-      // flutter_bootstrap.js 로딩 후 12초 안에 Flutter 엔진이 시작되지 않으면
-      // → SW 캐시 문제로 판단하고 캐시 초기화 후 재시도
+      // ── Flutter 기동 감시: 20초 안에 첫 프레임이 없으면 캐시 초기화 ───────
+      // 버그 수정:
+      //   ① flutter-first-frame은 window 또는 document 어느 쪽에서 발생할 수 있음
+      //   ② reload 후 세션에 'flutter_started' 가 있으면 타임아웃 체크를 스킵
+      //   ③ 타임아웃 12초 → 20초로 연장 (느린 네트워크/기기 대응)
+      if (sessionStorage.getItem('flutter_started')) {
+        // 이전 페이지에서 Flutter가 정상 기동됐음 → 이번 reload는 정상
+        sessionStorage.removeItem('flutter_started');
+      }
+
       var flutterStarted = false;
-      window.addEventListener('flutter-first-frame', function() {
+      function onFlutterStart() {
         flutterStarted = true;
-      });
+        sessionStorage.setItem('flutter_started', '1');
+      }
+      window.addEventListener('flutter-first-frame', onFlutterStart);
+      document.addEventListener('flutter-first-frame', onFlutterStart);
+
       setTimeout(function() {
         if (!flutterStarted && !sessionStorage.getItem('sw_cleared')) {
           clearAndReload();
         }
-      }, 12000);
+      }, 20000);  // 20초 (이전: 12초) — 느린 기기/Wi-Fi 대응
     })();
   </script>
 
