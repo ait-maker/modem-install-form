@@ -41,11 +41,14 @@ class DefaultFirebaseOptions {
   }
 
   // Web configuration (from Firebase Console → Project settings → Web app)
+  // authDomain 추가: 없으면 iOS Safari / 시크릿 탭에서 Firestore 채널 초기화가
+  // 내부 iframe CSP 정책에 막혀 앱 자체가 블로킹될 수 있음
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyDkOhdun6rNIlg3oqtHdh8u_77dm7bgG50',
     appId: '1:1038229452599:web:e064f6c32f5a26511fdcb3',
     messagingSenderId: '1038229452599',
     projectId: 'modem-install-2026',
+    authDomain: 'modem-install-2026.firebaseapp.com',
     storageBucket: 'modem-install-2026.firebasestorage.app',
   );
 
